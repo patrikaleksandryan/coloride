@@ -57,7 +57,7 @@ func Close() {
 }
 
 func renderText(renderer *sdl.Renderer, font *ttf.Font, text string, x, y int32) error {
-	color := sdl.Color{R: 255, G: 255, B: 255, A: 255}
+	color := sdl.Color{R: 0, G: 255, B: 0, A: 255}
 	surface, err := font.RenderUTF8Blended(text, color)
 	if err != nil {
 		return fmt.Errorf("could not create text surface: %v", err)
@@ -74,37 +74,49 @@ func renderText(renderer *sdl.Renderer, font *ttf.Font, text string, x, y int32)
 	return renderer.Copy(texture, nil, &rect)
 }
 
+func handleEvents(running *bool) {
+	event := sdl.PollEvent()
+	for event != nil {
+		switch e := event.(type) {
+		case *sdl.QuitEvent:
+			*running = false
+		case *sdl.KeyboardEvent:
+			if e.Keysym.Sym == sdl.K_ESCAPE {
+				*running = false
+			}
+		}
+		event = sdl.PollEvent()
+	}
+}
+
+func render() {
+	_ = renderer.SetDrawColor(0, 0, 0, 255)
+	_ = renderer.Clear()
+
+	texts := []string{
+		"Hello, SDL2!",
+		"This is monospaced text.",
+		"Rendered using SDL_ttf.",
+		"Press ESC to exit.",
+	}
+
+	y := int32(50)
+	for _, line := range texts {
+		err := renderText(renderer, mainFont, line, 50, y)
+		if err != nil {
+			panic(err)
+		}
+		y += 40
+	}
+
+	renderer.Present()
+}
+
 func Run() error {
 	running := true
 	for running {
-		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			switch e := event.(type) {
-			case *sdl.QuitEvent:
-				running = false
-			case *sdl.KeyboardEvent:
-				if e.Keysym.Sym == sdl.K_ESCAPE {
-					running = false
-				}
-			}
-		}
-
-		renderer.SetDrawColor(0, 0, 0, 255) // Черный фон
-		renderer.Clear()
-
-		texts := []string{
-			"Hello, SDL2!",
-			"This is monospaced text.",
-			"Rendered using SDL_ttf.",
-			"Press ESC to exit.",
-		}
-
-		y := int32(50)
-		for _, line := range texts {
-			renderText(renderer, mainFont, line, 50, y)
-			y += 40
-		}
-
-		renderer.Present()
+		handleEvents(&running)
+		render()
 	}
 	return nil
 }
