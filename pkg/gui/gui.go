@@ -83,16 +83,24 @@ func renderText(renderer *sdl.Renderer, font *ttf.Font, text string, x, y int32)
 	return renderer.Copy(texture, nil, &rect)
 }
 
+func handleMouseDown(x, y int) {
+	mainFrame.HandleClick(x, y)
+}
+
 func handleEvents(running *bool) {
 	event := sdl.PollEvent()
 	for event != nil {
 		switch e := event.(type) {
-		case *sdl.QuitEvent:
-			*running = false
+		case *sdl.MouseButtonEvent:
+			if e.State == sdl.PRESSED && e.Button == 1 {
+				handleMouseDown(int(e.X), int(e.Y))
+			}
 		case *sdl.KeyboardEvent:
 			if e.Keysym.Sym == sdl.K_ESCAPE {
 				*running = false
 			}
+		case *sdl.QuitEvent:
+			*running = false
 		}
 		event = sdl.PollEvent()
 	}
@@ -117,6 +125,8 @@ func render() {
 		}
 		y += 40
 	}
+
+	mainFrame.Render(0, 0)
 
 	renderer.Present()
 }

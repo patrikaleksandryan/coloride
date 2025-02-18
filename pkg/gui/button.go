@@ -1,6 +1,8 @@
 package gui
 
-import "github.com/veandco/go-sdl2/sdl"
+import (
+	"github.com/veandco/go-sdl2/sdl"
+)
 
 type Button struct {
 	Frame

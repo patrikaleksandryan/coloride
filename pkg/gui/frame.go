@@ -1,15 +1,19 @@
 package gui
 
+import "fmt"
+
 type View interface {
 	Render(x, y, w, h int)
+
+	SetOnClick(onClick func())
 	Click()
 }
 
 type Frame struct {
 	x, y, w, h int
+	View       View
 	visible    bool
 	enabled    bool
-	view       View
 	body       *Frame // Ring with a lock
 	prev, next *Frame
 }
@@ -20,7 +24,11 @@ func NewFrame(view View, x, y, w, h int) *Frame {
 	lock.next = lock
 
 	return &Frame{
-		view:    view,
+		x:       x,
+		y:       y,
+		w:       w,
+		h:       h,
+		View:    view,
 		visible: true,
 		enabled: true,
 		body:    lock,
@@ -82,11 +90,14 @@ func (f *Frame) SetEnabled(enabled bool) {
 }
 
 func (f *Frame) Click() {
-	f.view.Click()
+	if f.View != nil {
+		f.View.Click()
+	}
 }
 
 // HandleClick returns true if click is successful. (x; y) is relative to f.
 func (f *Frame) HandleClick(x, y int) bool {
+	fmt.Println("HANDLE CLICK ", x, y)
 	clicked := false
 	if x >= 0 && x < f.w && y >= 0 && y < f.h {
 		for c := f.body.prev; !clicked && c != f.body; c = c.prev {
@@ -99,4 +110,13 @@ func (f *Frame) HandleClick(x, y int) bool {
 		}
 	}
 	return clicked
+}
+
+func (f *Frame) Render(x, y int) {
+	if f.View != nil {
+		f.View.Render(f.x+x, f.y+y, f.w, f.h)
+	}
+	for c := f.body.next; c != f.body; c = c.next {
+		c.Render(f.x+x, f.y+y)
+	}
 }
