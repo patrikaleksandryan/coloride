@@ -10,7 +10,14 @@ var (
 	window   *sdl.Window
 	renderer *sdl.Renderer
 	mainFont *ttf.Font
+
+	mainFrame *Frame
 )
+
+// Append appends the given frame to the main frame.
+func Append(frame *Frame) {
+	mainFrame.Append(frame)
+}
 
 func Init(windowWidth, windowHeight int) error {
 	err := sdl.Init(sdl.INIT_EVERYTHING)
@@ -38,6 +45,8 @@ func Init(windowWidth, windowHeight int) error {
 	if err != nil {
 		return fmt.Errorf("could not open font: %v", err)
 	}
+
+	mainFrame = NewFrame(nil, 0, 0, windowWidth, windowHeight)
 
 	return nil
 }

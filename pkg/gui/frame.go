@@ -1,7 +1,7 @@
 package gui
 
 type View interface {
-	Draw(x, y, w, h int)
+	Render(x, y, w, h int)
 	Click()
 }
 
@@ -14,12 +14,13 @@ type Frame struct {
 	prev, next *Frame
 }
 
-func NewFrame(x, y, w, h int) *Frame {
+func NewFrame(view View, x, y, w, h int) *Frame {
 	lock := &Frame{}
 	lock.prev = lock
 	lock.next = lock
 
 	return &Frame{
+		view:    view,
 		visible: true,
 		enabled: true,
 		body:    lock,
@@ -27,18 +28,41 @@ func NewFrame(x, y, w, h int) *Frame {
 }
 
 func (f *Frame) Append(child *Frame) {
+	// Add child to the end of the ring (f.body is the lock)
 	child.next = f.body
 	child.prev = f.body.prev
 	f.body.prev.next = child
 	f.body.prev = child
 }
 
+func (f *Frame) AddView(child *Frame, x, y, w, h int) {
+	child.SetGeometry(x, y, w, h)
+	f.Append(child)
+}
+
 func (f *Frame) Pos() (x, y int) {
 	return f.x, f.y
 }
 
+func (f *Frame) SetPos(x, y int) {
+	f.x = x
+	f.y = y
+}
+
 func (f *Frame) Size() (w, h int) {
 	return f.w, f.h
+}
+
+func (f *Frame) SetSize(w, h int) {
+	f.w = w
+	f.h = h
+}
+
+func (f *Frame) SetGeometry(x, y, w, h int) {
+	f.x = x
+	f.y = y
+	f.w = w
+	f.h = h
 }
 
 func (f *Frame) Visible() bool {
@@ -61,7 +85,7 @@ func (f *Frame) Click() {
 	f.view.Click()
 }
 
-// TryClick returns true if click is successful. (x; y) is relative to f.
+// HandleClick returns true if click is successful. (x; y) is relative to f.
 func (f *Frame) HandleClick(x, y int) bool {
 	clicked := false
 	if x >= 0 && x < f.w && y >= 0 && y < f.h {

@@ -3,6 +3,7 @@ package gui
 import "github.com/veandco/go-sdl2/sdl"
 
 type Button struct {
+	Frame
 	caption string
 	onClick func()
 }
@@ -31,8 +32,8 @@ func (b *Button) Click() {
 	}
 }
 
-func (b *Button) Draw(x, y, w, h int) {
-	_ = renderer.SetDrawColor(255, 0, 0, 255)
+func (b *Button) Render(x, y, w, h int) {
+	renderer.SetDrawColor(255, 0, 0, 255)
 	rect := sdl.Rect{X: int32(x), Y: int32(y), W: int32(w), H: int32(h)}
-	_ = renderer.FillRect(&rect)
+	renderer.DrawRect(&rect)
 }
