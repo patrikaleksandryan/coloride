@@ -11,11 +11,11 @@ var (
 	renderer *sdl.Renderer
 	mainFont *ttf.Font
 
-	mainFrame *Frame
+	mainFrame *FrameDesc
 )
 
 // Append appends the given frame to the main frame.
-func Append(frame *Frame) {
+func Append(frame Frame) {
 	mainFrame.Append(frame)
 }
 
@@ -46,7 +46,8 @@ func Init(windowWidth, windowHeight int) error {
 		return fmt.Errorf("could not open font: %v", err)
 	}
 
-	mainFrame = NewFrame(nil, 0, 0, windowWidth, windowHeight)
+	mainFrame = &FrameDesc{}
+	InitFrame(mainFrame, 0, 0, windowWidth, windowHeight)
 
 	return nil
 }
@@ -110,21 +111,21 @@ func render() {
 	_ = renderer.SetDrawColor(0, 0, 0, 255)
 	_ = renderer.Clear()
 
-	texts := []string{
-		"Hello, SDL2!",
-		"This is monospaced text.",
-		"Rendered using SDL_ttf.",
-		"Press ESC to exit.",
-	}
-
-	y := int32(50)
-	for _, line := range texts {
-		err := renderText(renderer, mainFont, line, 50, y)
-		if err != nil {
-			panic(err)
-		}
-		y += 40
-	}
+	//texts := []string{
+	//	"Hello, SDL2!",
+	//	"This is monospaced text.",
+	//	"Rendered using SDL_ttf.",
+	//	"Press ESC to exit.",
+	//}
+	//
+	//y := int32(50)
+	//for _, line := range texts {
+	//	err := renderText(renderer, mainFont, line, 50, y)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	y += 40
+	//}
 
 	mainFrame.Render(0, 0)
 

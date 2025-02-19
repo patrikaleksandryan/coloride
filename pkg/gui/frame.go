@@ -1,107 +1,130 @@
 package gui
 
-import "fmt"
-
-type View interface {
-	Render(x, y, w, h int)
-
-	SetOnClick(onClick func())
+type Frame interface {
+	Pos() (x, y int)
+	SetPos(x, y int)
+	Size() (w, h int)
+	SetSize(w, h int)
+	SetGeometry(x, y, w, h int)
+	Visible() bool
+	SetVisible(visible bool)
+	Enabled() bool
+	SetEnabled(enabled bool)
 	Click()
+	HandleClick(x, y int) bool
+	RenderChildren(x, y int)
+	Render(x, y int)
+	Prev() Frame
+	SetPrev(prev Frame)
+	Next() Frame
+	SetNext(next Frame)
 }
 
-type Frame struct {
+// FrameDesc is a base type for all GUI components.
+type FrameDesc struct {
 	x, y, w, h int
-	View       View
 	visible    bool
 	enabled    bool
-	body       *Frame // Ring with a lock
-	prev, next *Frame
+	body       Frame // Ring with a lock
+	prev, next Frame
+
+	OnClick func()
 }
 
-func NewFrame(view View, x, y, w, h int) *Frame {
-	lock := &Frame{}
+func InitFrame(frame *FrameDesc, x, y, w, h int) {
+	frame.x = x
+	frame.y = y
+	frame.w = w
+	frame.h = h
+	frame.visible = true
+	frame.enabled = true
+
+	lock := &FrameDesc{}
 	lock.prev = lock
 	lock.next = lock
-
-	return &Frame{
-		x:       x,
-		y:       y,
-		w:       w,
-		h:       h,
-		View:    view,
-		visible: true,
-		enabled: true,
-		body:    lock,
-	}
+	frame.body = lock
 }
 
-func (f *Frame) Append(child *Frame) {
+func (f *FrameDesc) Prev() Frame {
+	return f.prev
+}
+
+func (f *FrameDesc) SetPrev(prev Frame) {
+	f.prev = prev
+}
+
+func (f *FrameDesc) Next() Frame {
+	return f.next
+}
+
+func (f *FrameDesc) SetNext(next Frame) {
+	f.next = next
+}
+
+func (f *FrameDesc) Append(child Frame) {
 	// Add child to the end of the ring (f.body is the lock)
-	child.next = f.body
-	child.prev = f.body.prev
-	f.body.prev.next = child
-	f.body.prev = child
+	child.SetNext(f.body)
+	child.SetPrev(f.body.Prev())
+	f.body.Prev().SetNext(child)
+	f.body.SetPrev(child)
 }
 
-func (f *Frame) AddView(child *Frame, x, y, w, h int) {
-	child.SetGeometry(x, y, w, h)
-	f.Append(child)
-}
-
-func (f *Frame) Pos() (x, y int) {
+func (f *FrameDesc) Pos() (x, y int) {
 	return f.x, f.y
 }
 
-func (f *Frame) SetPos(x, y int) {
+func (f *FrameDesc) SetPos(x, y int) {
 	f.x = x
 	f.y = y
 }
 
-func (f *Frame) Size() (w, h int) {
+func (f *FrameDesc) Size() (w, h int) {
 	return f.w, f.h
 }
 
-func (f *Frame) SetSize(w, h int) {
+func (f *FrameDesc) SetSize(w, h int) {
 	f.w = w
 	f.h = h
 }
 
-func (f *Frame) SetGeometry(x, y, w, h int) {
+func (f *FrameDesc) SetGeometry(x, y, w, h int) {
 	f.x = x
 	f.y = y
 	f.w = w
 	f.h = h
 }
 
-func (f *Frame) Visible() bool {
+func (f *FrameDesc) Visible() bool {
 	return f.visible
 }
 
-func (f *Frame) SetVisible(visible bool) {
+func (f *FrameDesc) SetVisible(visible bool) {
 	f.visible = visible
 }
 
-func (f *Frame) Enabled() bool {
+func (f *FrameDesc) Enabled() bool {
 	return f.enabled
 }
 
-func (f *Frame) SetEnabled(enabled bool) {
+func (f *FrameDesc) SetEnabled(enabled bool) {
 	f.enabled = enabled
 }
 
-func (f *Frame) Click() {
-	if f.View != nil {
-		f.View.Click()
+func (f *FrameDesc) Click() {
+	if f.OnClick != nil {
+		f.OnClick()
 	}
 }
 
 // HandleClick returns true if click is successful. (x; y) is relative to f.
-func (f *Frame) HandleClick(x, y int) bool {
-	fmt.Println("HANDLE CLICK ", x, y)
+func (f *FrameDesc) HandleClick(x, y int) bool {
 	clicked := false
 	if x >= 0 && x < f.w && y >= 0 && y < f.h {
-		for c := f.body.prev; !clicked && c != f.body; c = c.prev {
-			clicked = c.HandleClick(x-c.x, y-c.y)
+		for c := f.body.Prev(); !clicked && c != f.body; c = c.Prev() {
+			if c.Enabled() {
+				cx, cy := c.Pos()
+				clicked = c.HandleClick(x-cx, y-cy)
+			}
 		}
 		// No child clicked -> clicking on f
 		if !clicked {
@@ -112,11 +135,15 @@ func (f *Frame) HandleClick(x, y int) bool {
 	return clicked
 }
 
-func (f *Frame) Render(x, y int) {
-	if f.View != nil {
-		f.View.Render(f.x+x, f.y+y, f.w, f.h)
+func (f *FrameDesc) RenderChildren(x, y int) {
+	for c := f.body.Next(); c != f.body; c = c.Next() {
+		if c.Visible() {
+			cx, cy := c.Pos()
+			c.Render(x+cx, y+cy)
+		}
 	}
-	for c := f.body.next; c != f.body; c = c.next {
-		c.Render(f.x+x, f.y+y)
-	}
+}
+
+func (f *FrameDesc) Render(x, y int) {
+	f.RenderChildren(x, y)
 }

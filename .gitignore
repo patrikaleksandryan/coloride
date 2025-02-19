@@ -1,3 +1,4 @@
+.DS_Store
 *.exe
 *.exe~
 *.dll
@@ -5,6 +6,7 @@
 *.dylib
 *.test
 *.out
+*.o
 .idea
 /coloride
 /coloride.exe

@@ -12,14 +12,14 @@ const (
 )
 
 func initInterface() {
-	btn1 := gui.NewFrame(gui.NewButton("Hello"), 100, 50, 120, 32)
-	btn2 := gui.NewFrame(gui.NewButton("World"), 100, 200, 600, 400)
-	btn3 := gui.NewFrame(gui.NewButton("Station"), 50, 30, 200, 200)
-	btn4 := gui.NewFrame(gui.NewButton("Mir"), 300, 100, 300, 80)
+	btn1 := gui.NewButton("Hello", 30, 30, 300, 60)
+	btn2 := gui.NewButton("World", 30, 120, 300, 300)
+	btn3 := gui.NewButton("Station", 60, 60, 210, 360)
+	btn4 := gui.NewButton("Mir", 30, 30, 360, 90)
 
-	btn4.View.SetOnClick(func() {
+	btn4.OnClick = func() {
 		fmt.Println("THIS IS BUTTON 4")
-	})
+	}
 
 	gui.Append(btn1)
 	gui.Append(btn2)
