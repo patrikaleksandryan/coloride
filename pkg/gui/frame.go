@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -8,7 +9,8 @@ type Frame interface {
 	Pos() (x, y int)
 	SetPos(x, y int)
 	Size() (w, h int)
-	SetSize(w, h int)
+	Resize(w, h int)
+	OnResize(w, h int)
 	SetGeometry(x, y, w, h int)
 	Visible() bool
 	SetVisible(visible bool)
@@ -94,16 +96,23 @@ func (f *FrameDesc) Size() (w, h int) {
 	return f.w, f.h
 }
 
-func (f *FrameDesc) SetSize(w, h int) {
+func (f *FrameDesc) Resize(w, h int) {
 	f.w = w
 	f.h = h
+	f.OnResize(w, h)
+}
+
+func (f *FrameDesc) OnResize(w, h int) {
+	if f == mainFrame.body.Next() {
+		fmt.Println("WINDOW HERE??")
+	} else if f == mainFrame {
+		fmt.Println("MAINFRAME")
+	}
 }
 
 func (f *FrameDesc) SetGeometry(x, y, w, h int) {
-	f.x = x
-	f.y = y
-	f.w = w
-	f.h = h
+	f.SetPos(x, y)
+	f.Resize(w, h)
 }
 
 func (f *FrameDesc) Visible() bool {

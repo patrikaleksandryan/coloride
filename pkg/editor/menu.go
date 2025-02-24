@@ -9,9 +9,9 @@ type Menu struct {
 	gui.FrameDesc
 }
 
-func NewMenu(x, y, w, h int) *Menu {
+func NewMenu() *Menu {
 	m := &Menu{}
-	gui.InitFrame(&m.FrameDesc, x, y, w, h)
+	gui.InitFrame(&m.FrameDesc, 0, 0, 100, 20)
 	return m
 }
 

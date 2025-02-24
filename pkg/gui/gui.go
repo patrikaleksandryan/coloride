@@ -84,14 +84,22 @@ func renderText(renderer *sdl.Renderer, font *ttf.Font, text string, x, y int32)
 	return renderer.Copy(texture, nil, &rect)
 }
 
+func ResizeMainFrame(w, h int) {
+	mainFrame.Resize(w, h)
+	if mainFrame.HasChildren() {
+		mainFrame.body.Next().SetGeometry(0, 0, w, h)
+	}
+}
+
 func handleMouseDown(x, y int) {
 	mainFrame.HandleClick(x, y)
 }
 
 func handleWindowEvent(event *sdl.WindowEvent) {
-	switch event.Type {
+	switch event.Event {
 	case sdl.WINDOWEVENT_RESIZED:
-
+		w, h := int(event.Data1), int(event.Data2)
+		ResizeMainFrame(int(w), int(h))
 	}
 }
 
@@ -142,6 +150,9 @@ func render() {
 }
 
 func Run() error {
+	w, h := window.GetSize()
+	ResizeMainFrame(int(w), int(h))
+
 	running := true
 	for running {
 		handleEvents(&running)

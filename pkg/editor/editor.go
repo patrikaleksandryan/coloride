@@ -9,9 +9,9 @@ type Editor struct {
 	gui.FrameDesc
 }
 
-func NewEditor(x, y, w, h int) *Editor {
+func NewEditor() *Editor {
 	e := &Editor{}
-	gui.InitFrame(&e.FrameDesc, x, y, w, h)
+	gui.InitFrame(&e.FrameDesc, 0, 0, 100, 100)
 	return e
 }
 

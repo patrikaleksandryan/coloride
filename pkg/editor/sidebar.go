@@ -9,9 +9,9 @@ type Sidebar struct {
 	gui.FrameDesc
 }
 
-func NewSidebar(x, y, w, h int) *Sidebar {
+func NewSidebar() *Sidebar {
 	s := &Sidebar{}
-	gui.InitFrame(&s.FrameDesc, x, y, w, h)
+	gui.InitFrame(&s.FrameDesc, 0, 0, 100, 20)
 	return s
 }
 

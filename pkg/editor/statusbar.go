@@ -9,9 +9,9 @@ type Statusbar struct {
 	gui.FrameDesc
 }
 
-func NewStatusbar(x, y, w, h int) *Statusbar {
+func NewStatusbar() *Statusbar {
 	s := &Statusbar{}
-	gui.InitFrame(&s.FrameDesc, x, y, w, h)
+	gui.InitFrame(&s.FrameDesc, 0, 0, 100, 20)
 	return s
 }
 
