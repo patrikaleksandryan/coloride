@@ -26,13 +26,16 @@ func (b *Button) Caption() string {
 }
 
 func (b *Button) Render(x, y int) {
-	renderer.SetDrawColor(255, 0, 0, 255)
-
 	rect := sdl.Rect{X: int32(x), Y: int32(y), W: int32(b.w), H: int32(b.h)}
-	renderer.DrawRect(&rect)
+
+	SetColor(b.bgColor)
+	Renderer.FillRect(&rect)
+
+	SetColor(b.color)
+	Renderer.DrawRect(&rect)
 
 	rect = sdl.Rect{X: int32(x + 2), Y: int32(y + 2), W: int32(b.w - 4), H: int32(b.h - 4)}
-	renderer.DrawRect(&rect)
+	Renderer.DrawRect(&rect)
 
 	b.RenderChildren(x, y)
 }

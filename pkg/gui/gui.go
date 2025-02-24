@@ -8,7 +8,7 @@ import (
 
 var (
 	window   *sdl.Window
-	renderer *sdl.Renderer
+	Renderer *sdl.Renderer
 	mainFont *ttf.Font
 
 	mainFrame *FrameDesc
@@ -31,14 +31,14 @@ func Init(windowWidth, windowHeight int) error {
 	}
 
 	window, err = sdl.CreateWindow("SDL2 Text Example", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		int32(windowWidth), int32(windowHeight), sdl.WINDOW_SHOWN)
+		int32(windowWidth), int32(windowHeight), sdl.WINDOW_SHOWN|sdl.WINDOW_RESIZABLE)
 	if err != nil {
 		return fmt.Errorf("could not create window: %v", err)
 	}
 
-	renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED|sdl.RENDERER_PRESENTVSYNC)
+	Renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED|sdl.RENDERER_PRESENTVSYNC)
 	if err != nil {
-		return fmt.Errorf("could not create renderer: %v", err)
+		return fmt.Errorf("could not create Renderer: %v", err)
 	}
 
 	mainFont, err = ttf.OpenFont("data/fonts/main.ttf", 24)
@@ -56,8 +56,8 @@ func Close() {
 	if mainFont != nil {
 		mainFont.Close()
 	}
-	if renderer != nil {
-		_ = renderer.Destroy()
+	if Renderer != nil {
+		_ = Renderer.Destroy()
 	}
 	if window != nil {
 		_ = window.Destroy()
@@ -88,6 +88,13 @@ func handleMouseDown(x, y int) {
 	mainFrame.HandleClick(x, y)
 }
 
+func handleWindowEvent(event *sdl.WindowEvent) {
+	switch event.Type {
+	case sdl.WINDOWEVENT_RESIZED:
+
+	}
+}
+
 func handleEvents(running *bool) {
 	event := sdl.PollEvent()
 	for event != nil {
@@ -100,6 +107,8 @@ func handleEvents(running *bool) {
 			if e.Keysym.Sym == sdl.K_ESCAPE {
 				*running = false
 			}
+		case *sdl.WindowEvent:
+			handleWindowEvent(e)
 		case *sdl.QuitEvent:
 			*running = false
 		}
@@ -108,8 +117,8 @@ func handleEvents(running *bool) {
 }
 
 func render() {
-	_ = renderer.SetDrawColor(0, 0, 0, 255)
-	_ = renderer.Clear()
+	_ = Renderer.SetDrawColor(0, 0, 0, 255)
+	_ = Renderer.Clear()
 
 	//texts := []string{
 	//	"Hello, SDL2!",
@@ -120,7 +129,7 @@ func render() {
 	//
 	//y := int32(50)
 	//for _, line := range texts {
-	//	err := renderText(renderer, mainFont, line, 50, y)
+	//	err := renderText(Renderer, mainFont, line, 50, y)
 	//	if err != nil {
 	//		panic(err)
 	//	}
@@ -129,7 +138,7 @@ func render() {
 
 	mainFrame.Render(0, 0)
 
-	renderer.Present()
+	Renderer.Present()
 }
 
 func Run() error {

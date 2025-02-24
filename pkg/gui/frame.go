@@ -1,5 +1,9 @@
 package gui
 
+import (
+	"github.com/veandco/go-sdl2/sdl"
+)
+
 type Frame interface {
 	Pos() (x, y int)
 	SetPos(x, y int)
@@ -10,6 +14,10 @@ type Frame interface {
 	SetVisible(visible bool)
 	Enabled() bool
 	SetEnabled(enabled bool)
+	Color() Color
+	SetColor(color Color)
+	BgColor() Color
+	SetBgColor(color Color)
 	Click()
 	HandleClick(x, y int) bool
 	RenderChildren(x, y int)
@@ -22,9 +30,11 @@ type Frame interface {
 
 // FrameDesc is a base type for all GUI components.
 type FrameDesc struct {
-	x, y, w, h int
-	visible    bool
-	enabled    bool
+	x, y, w, h     int
+	visible        bool
+	enabled        bool
+	color, bgColor Color
+
 	body       Frame // Ring with a lock
 	prev, next Frame
 
@@ -38,6 +48,8 @@ func InitFrame(frame *FrameDesc, x, y, w, h int) {
 	frame.h = h
 	frame.visible = true
 	frame.enabled = true
+	frame.color = MakeColor(20, 100, 190)
+	frame.bgColor = MakeColor(0, 20, 50)
 
 	lock := &FrameDesc{}
 	lock.prev = lock
@@ -110,6 +122,22 @@ func (f *FrameDesc) SetEnabled(enabled bool) {
 	f.enabled = enabled
 }
 
+func (f *FrameDesc) Color() Color {
+	return f.color
+}
+
+func (f *FrameDesc) SetColor(color Color) {
+	f.color = color
+}
+
+func (f *FrameDesc) BgColor() Color {
+	return f.bgColor
+}
+
+func (f *FrameDesc) SetBgColor(color Color) {
+	f.bgColor = color
+}
+
 func (f *FrameDesc) Click() {
 	if f.OnClick != nil {
 		f.OnClick()
@@ -135,11 +163,34 @@ func (f *FrameDesc) HandleClick(x, y int) bool {
 	return clicked
 }
 
+func (f *FrameDesc) HasChildren() bool {
+	return f.body != f.body.Next()
+}
+
 func (f *FrameDesc) RenderChildren(x, y int) {
-	for c := f.body.Next(); c != f.body; c = c.Next() {
-		if c.Visible() {
-			cx, cy := c.Pos()
-			c.Render(x+cx, y+cy)
+	if f.HasChildren() {
+		parentClipEnabled := Renderer.IsClipEnabled()
+		parentIntersection := Renderer.GetClipRect()
+
+		rect := sdl.Rect{X: int32(x), Y: int32(y), W: int32(f.w), H: int32(f.h)}
+		nonEmpty := true
+		if parentClipEnabled {
+			rect, nonEmpty = rect.Intersect(&parentIntersection)
+		}
+		if nonEmpty {
+			Renderer.SetClipRect(&rect)
+			for c := f.body.Next(); c != f.body; c = c.Next() {
+				if c.Visible() {
+					cx, cy := c.Pos()
+					c.Render(x+cx, y+cy)
+				}
+			}
+			// Revert parent clip
+			if parentClipEnabled {
+				Renderer.SetClipRect(&parentIntersection)
+			} else {
+				Renderer.SetClipRect(nil)
+			}
 		}
 	}
 }
