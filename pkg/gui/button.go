@@ -5,7 +5,7 @@ import (
 )
 
 type Button struct {
-	FrameDesc
+	FrameImpl
 	caption string
 }
 
@@ -13,7 +13,7 @@ func NewButton(caption string, x, y, w, h int) *Button {
 	b := &Button{
 		caption: caption,
 	}
-	InitFrame(&b.FrameDesc, x, y, w, h)
+	InitFrame(&b.FrameImpl, x, y, w, h)
 	return b
 }
 

@@ -6,12 +6,12 @@ import (
 )
 
 type Menu struct {
-	gui.FrameDesc
+	gui.FrameImpl
 }
 
 func NewMenu() *Menu {
 	m := &Menu{}
-	gui.InitFrame(&m.FrameDesc, 0, 0, 100, 20)
+	gui.InitFrame(&m.FrameImpl, 0, 0, 100, 20)
 	return m
 }
 

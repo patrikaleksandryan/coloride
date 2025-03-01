@@ -6,12 +6,12 @@ import (
 )
 
 type Sidebar struct {
-	gui.FrameDesc
+	gui.FrameImpl
 }
 
 func NewSidebar() *Sidebar {
 	s := &Sidebar{}
-	gui.InitFrame(&s.FrameDesc, 0, 0, 100, 20)
+	gui.InitFrame(&s.FrameImpl, 0, 0, 100, 20)
 	return s
 }
 

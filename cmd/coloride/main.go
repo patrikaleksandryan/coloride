@@ -15,6 +15,7 @@ const (
 func initInterface() {
 	window := editor.NewWindow()
 	gui.Append(window)
+	gui.SetFocus(window.Editor())
 }
 
 func run() error {

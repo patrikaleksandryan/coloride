@@ -6,12 +6,12 @@ import (
 )
 
 type Statusbar struct {
-	gui.FrameDesc
+	gui.FrameImpl
 }
 
 func NewStatusbar() *Statusbar {
 	s := &Statusbar{}
-	gui.InitFrame(&s.FrameDesc, 0, 0, 100, 20)
+	gui.InitFrame(&s.FrameImpl, 0, 0, 100, 20)
 	return s
 }
 

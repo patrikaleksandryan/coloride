@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"github.com/patrikaleksandryan/coloride/pkg/text"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
 )
@@ -11,12 +12,24 @@ var (
 	Renderer *sdl.Renderer
 	mainFont *ttf.Font
 
-	mainFrame *FrameDesc
+	mainFrame *FrameImpl
+
+	focusFrame Frame
 )
 
 // Append appends the given frame to the main frame.
 func Append(frame Frame) {
 	mainFrame.Append(frame)
+}
+
+func SetFocus(frame Frame) {
+	if focusFrame != nil {
+		focusFrame.LostFocus()
+	}
+	focusFrame = frame
+	if focusFrame != nil {
+		focusFrame.GetFocus()
+	}
 }
 
 func Init(windowWidth, windowHeight int) error {
@@ -46,8 +59,8 @@ func Init(windowWidth, windowHeight int) error {
 		return fmt.Errorf("could not open font: %v", err)
 	}
 
-	mainFrame = &FrameDesc{}
-	InitFrame(mainFrame, 0, 0, windowWidth, windowHeight)
+	mainFrame = &FrameImpl{}
+	InitFrame(mainFrame, 0, 0, 0, 0)
 
 	return nil
 }
@@ -85,14 +98,61 @@ func renderText(renderer *sdl.Renderer, font *ttf.Font, text string, x, y int32)
 }
 
 func ResizeMainFrame(w, h int) {
-	mainFrame.Resize(w, h)
-	if mainFrame.HasChildren() {
-		mainFrame.body.Next().SetGeometry(0, 0, w, h)
+	oldW, oldH := mainFrame.Size()
+	if w != oldW || h != oldH {
+		mainFrame.Resize(w, h)
+		if mainFrame.HasChildren() {
+			SetGeometry(mainFrame.body.Next(), 0, 0, w, h)
+		}
 	}
 }
 
 func handleMouseDown(x, y int) {
 	mainFrame.HandleClick(x, y)
+}
+
+func handleCharInput(r rune) {
+	if focusFrame != nil {
+		focusFrame.OnCharInput(r)
+	}
+}
+
+func handleTextInput(e *sdl.TextInputEvent) {
+	text := e.GetText()
+	for _, r := range text {
+		handleCharInput(r)
+	}
+}
+
+func handleKeyDown(e *sdl.KeyboardEvent) {
+	if focusFrame != nil {
+		focusFrame.OnKeyDown(int(e.Keysym.Sym), e.Keysym.Mod)
+	}
+
+	switch e.Keysym.Sym {
+	case sdl.K_BACKSPACE:
+		handleCharInput(text.KeyBackspace)
+	case sdl.K_TAB:
+		handleCharInput(text.KeyTab)
+	case sdl.K_DELETE:
+		handleCharInput(text.KeyDelete)
+	case sdl.K_RETURN, sdl.K_KP_ENTER:
+		handleCharInput(text.KeyEnter)
+	}
+}
+
+func handleKeyUp(e *sdl.KeyboardEvent) {
+	if focusFrame != nil {
+		focusFrame.OnKeyUp(int(e.Keysym.Sym), e.Keysym.Mod)
+	}
+}
+
+func handleKeyboard(e *sdl.KeyboardEvent) {
+	if e.State == sdl.PRESSED {
+		handleKeyDown(e)
+	} else {
+		handleKeyUp(e)
+	}
 }
 
 func handleWindowEvent(event *sdl.WindowEvent) {
@@ -111,10 +171,10 @@ func handleEvents(running *bool) {
 			if e.State == sdl.PRESSED && e.Button == 1 {
 				handleMouseDown(int(e.X), int(e.Y))
 			}
+		case *sdl.TextInputEvent:
+			handleTextInput(e)
 		case *sdl.KeyboardEvent:
-			if e.Keysym.Sym == sdl.K_ESCAPE {
-				*running = false
-			}
+			handleKeyboard(e)
 		case *sdl.WindowEvent:
 			handleWindowEvent(e)
 		case *sdl.QuitEvent:

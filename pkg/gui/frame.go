@@ -1,7 +1,6 @@
 package gui
 
 import (
-	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -10,31 +9,43 @@ type Frame interface {
 	SetPos(x, y int)
 	Size() (w, h int)
 	Resize(w, h int)
-	OnResize(w, h int)
-	SetGeometry(x, y, w, h int)
+	ResizeInside()
 	Visible() bool
 	SetVisible(visible bool)
 	Enabled() bool
 	SetEnabled(enabled bool)
+	Focused() bool
+	SetFocused(focused bool)
 	Color() Color
 	SetColor(color Color)
 	BgColor() Color
 	SetBgColor(color Color)
-	Click()
-	HandleClick(x, y int) bool
+
+	GetFocus()
+	LostFocus()
+
+	Click()                    //!FIXME rename?
+	HandleClick(x, y int) bool //!FIXME rename?
+
+	OnCharInput(r rune) //!FIXME rename?
+	OnKeyDown(key int, mod uint16)
+	OnKeyUp(key int, mod uint16)
+
 	RenderChildren(x, y int)
 	Render(x, y int)
+
 	Prev() Frame
 	SetPrev(prev Frame)
 	Next() Frame
 	SetNext(next Frame)
 }
 
-// FrameDesc is a base type for all GUI components.
-type FrameDesc struct {
+// FrameImpl is a base type for all GUI components.
+type FrameImpl struct {
 	x, y, w, h     int
 	visible        bool
 	enabled        bool
+	focused        bool
 	color, bgColor Color
 
 	body       Frame // Ring with a lock
@@ -43,7 +54,7 @@ type FrameDesc struct {
 	OnClick func()
 }
 
-func InitFrame(frame *FrameDesc, x, y, w, h int) {
+func InitFrame(frame *FrameImpl, x, y, w, h int) {
 	frame.x = x
 	frame.y = y
 	frame.w = w
@@ -53,29 +64,29 @@ func InitFrame(frame *FrameDesc, x, y, w, h int) {
 	frame.color = MakeColor(20, 100, 190)
 	frame.bgColor = MakeColor(0, 20, 50)
 
-	lock := &FrameDesc{}
+	lock := &FrameImpl{}
 	lock.prev = lock
 	lock.next = lock
 	frame.body = lock
 }
 
-func (f *FrameDesc) Prev() Frame {
+func (f *FrameImpl) Prev() Frame {
 	return f.prev
 }
 
-func (f *FrameDesc) SetPrev(prev Frame) {
+func (f *FrameImpl) SetPrev(prev Frame) {
 	f.prev = prev
 }
 
-func (f *FrameDesc) Next() Frame {
+func (f *FrameImpl) Next() Frame {
 	return f.next
 }
 
-func (f *FrameDesc) SetNext(next Frame) {
+func (f *FrameImpl) SetNext(next Frame) {
 	f.next = next
 }
 
-func (f *FrameDesc) Append(child Frame) {
+func (f *FrameImpl) Append(child Frame) {
 	// Add child to the end of the ring (f.body is the lock)
 	child.SetNext(f.body)
 	child.SetPrev(f.body.Prev())
@@ -83,78 +94,87 @@ func (f *FrameDesc) Append(child Frame) {
 	f.body.SetPrev(child)
 }
 
-func (f *FrameDesc) Pos() (x, y int) {
+func (f *FrameImpl) Pos() (x, y int) {
 	return f.x, f.y
 }
 
-func (f *FrameDesc) SetPos(x, y int) {
-	f.x = x
-	f.y = y
+func (f *FrameImpl) SetPos(x, y int) {
+	f.x, f.y = x, y
 }
 
-func (f *FrameDesc) Size() (w, h int) {
+func (f *FrameImpl) Size() (w, h int) {
 	return f.w, f.h
 }
 
-func (f *FrameDesc) Resize(w, h int) {
-	f.w = w
-	f.h = h
-	f.OnResize(w, h)
+func (f *FrameImpl) Resize(w, h int) {
+	f.w, f.h = w, h
 }
 
-func (f *FrameDesc) OnResize(w, h int) {
-	if f == mainFrame.body.Next() {
-		fmt.Println("WINDOW HERE??")
-	} else if f == mainFrame {
-		fmt.Println("MAINFRAME")
-	}
+func (f *FrameImpl) ResizeInside() {
 }
 
-func (f *FrameDesc) SetGeometry(x, y, w, h int) {
+func SetGeometry(f Frame, x, y, w, h int) {
 	f.SetPos(x, y)
 	f.Resize(w, h)
+	f.ResizeInside()
 }
 
-func (f *FrameDesc) Visible() bool {
+func (f *FrameImpl) Visible() bool {
 	return f.visible
 }
 
-func (f *FrameDesc) SetVisible(visible bool) {
+func (f *FrameImpl) SetVisible(visible bool) {
 	f.visible = visible
 }
 
-func (f *FrameDesc) Enabled() bool {
+func (f *FrameImpl) Enabled() bool {
 	return f.enabled
 }
 
-func (f *FrameDesc) SetEnabled(enabled bool) {
+func (f *FrameImpl) SetEnabled(enabled bool) {
 	f.enabled = enabled
 }
 
-func (f *FrameDesc) Color() Color {
+func (f *FrameImpl) Focused() bool {
+	return f.focused
+}
+
+func (f *FrameImpl) SetFocused(focused bool) {
+	f.focused = focused
+}
+
+func (f *FrameImpl) Color() Color {
 	return f.color
 }
 
-func (f *FrameDesc) SetColor(color Color) {
+func (f *FrameImpl) SetColor(color Color) {
 	f.color = color
 }
 
-func (f *FrameDesc) BgColor() Color {
+func (f *FrameImpl) BgColor() Color {
 	return f.bgColor
 }
 
-func (f *FrameDesc) SetBgColor(color Color) {
+func (f *FrameImpl) SetBgColor(color Color) {
 	f.bgColor = color
 }
 
-func (f *FrameDesc) Click() {
+func (f *FrameImpl) GetFocus() {
+	f.focused = true
+}
+
+func (f *FrameImpl) LostFocus() {
+	f.focused = false
+}
+
+func (f *FrameImpl) Click() {
 	if f.OnClick != nil {
 		f.OnClick()
 	}
 }
 
 // HandleClick returns true if click is successful. (x; y) is relative to f.
-func (f *FrameDesc) HandleClick(x, y int) bool {
+func (f *FrameImpl) HandleClick(x, y int) bool {
 	clicked := false
 	if x >= 0 && x < f.w && y >= 0 && y < f.h {
 		for c := f.body.Prev(); !clicked && c != f.body; c = c.Prev() {
@@ -172,11 +192,17 @@ func (f *FrameDesc) HandleClick(x, y int) bool {
 	return clicked
 }
 
-func (f *FrameDesc) HasChildren() bool {
+func (f *FrameImpl) OnCharInput(r rune) {}
+
+func (f *FrameImpl) OnKeyDown(key int, mod uint16) {}
+
+func (f *FrameImpl) OnKeyUp(key int, mod uint16) {}
+
+func (f *FrameImpl) HasChildren() bool {
 	return f.body != f.body.Next()
 }
 
-func (f *FrameDesc) RenderChildren(x, y int) {
+func (f *FrameImpl) RenderChildren(x, y int) {
 	if f.HasChildren() {
 		parentClipEnabled := Renderer.IsClipEnabled()
 		parentIntersection := Renderer.GetClipRect()
@@ -204,6 +230,6 @@ func (f *FrameDesc) RenderChildren(x, y int) {
 	}
 }
 
-func (f *FrameDesc) Render(x, y int) {
+func (f *FrameImpl) Render(x, y int) {
 	f.RenderChildren(x, y)
 }
