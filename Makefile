@@ -8,7 +8,7 @@ build:
 	go build ./cmd/$(NAME)
 
 run:
-	go run ./cmd/$(NAME)
+	GODEBUG=asyncpreemptoff=1 go run ./cmd/$(NAME)
 
 clean:
 	@rm -f $(NAME) $(NAME).exe

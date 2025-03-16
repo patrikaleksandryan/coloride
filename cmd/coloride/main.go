@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/patrikaleksandryan/coloride/pkg/editor"
 	"github.com/patrikaleksandryan/coloride/pkg/gui"
-	"os"
 )
 
 const (

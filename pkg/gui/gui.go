@@ -2,17 +2,26 @@ package gui
 
 import (
 	"fmt"
+
+	"github.com/patrikaleksandryan/coloride/pkg/font"
 	"github.com/patrikaleksandryan/coloride/pkg/text"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
 )
 
+const (
+	// !TODO rename to "defaultFontSize" etc. and allow to set up from outside the gui
+	fontSize = 22
+	charW    = 16
+	charH    = 26
+)
+
 var (
 	window   *sdl.Window
 	Renderer *sdl.Renderer
-	mainFont *ttf.Font
 
-	mainFrame *FrameImpl
+	mainFont  font.Font
+	mainFrame *FrameImpl //!FIXME change to Frame, add Append
 
 	focusFrame Frame
 )
@@ -43,7 +52,7 @@ func Init(windowWidth, windowHeight int) error {
 		return fmt.Errorf("could not initialize TTF: %v", err)
 	}
 
-	window, err = sdl.CreateWindow("SDL2 Text Example", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+	window, err = sdl.CreateWindow("ColorIDE", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		int32(windowWidth), int32(windowHeight), sdl.WINDOW_SHOWN|sdl.WINDOW_RESIZABLE)
 	if err != nil {
 		return fmt.Errorf("could not create window: %v", err)
@@ -54,7 +63,7 @@ func Init(windowWidth, windowHeight int) error {
 		return fmt.Errorf("could not create Renderer: %v", err)
 	}
 
-	mainFont, err = ttf.OpenFont("data/fonts/main.ttf", 24)
+	mainFont, err = font.Open(Renderer, "data/fonts/main.ttf", fontSize, charW, charH)
 	if err != nil {
 		return fmt.Errorf("could not open font: %v", err)
 	}
@@ -79,24 +88,6 @@ func Close() {
 	sdl.Quit()
 }
 
-func renderText(renderer *sdl.Renderer, font *ttf.Font, text string, x, y int32) error {
-	color := sdl.Color{R: 0, G: 255, B: 0, A: 255}
-	surface, err := font.RenderUTF8Blended(text, color)
-	if err != nil {
-		return fmt.Errorf("could not create text surface: %v", err)
-	}
-	defer surface.Free()
-
-	texture, err := renderer.CreateTextureFromSurface(surface)
-	if err != nil {
-		return fmt.Errorf("could not create text texture: %v", err)
-	}
-	defer texture.Destroy()
-
-	rect := sdl.Rect{X: x, Y: y, W: surface.W, H: surface.H}
-	return renderer.Copy(texture, nil, &rect)
-}
-
 func ResizeMainFrame(w, h int) {
 	oldW, oldH := mainFrame.Size()
 	if w != oldW || h != oldH {
@@ -118,8 +109,8 @@ func handleCharInput(r rune) {
 }
 
 func handleTextInput(e *sdl.TextInputEvent) {
-	text := e.GetText()
-	for _, r := range text {
+	t := e.GetText()
+	for _, r := range t {
 		handleCharInput(r)
 	}
 }
@@ -159,7 +150,7 @@ func handleWindowEvent(event *sdl.WindowEvent) {
 	switch event.Event {
 	case sdl.WINDOWEVENT_RESIZED:
 		w, h := int(event.Data1), int(event.Data2)
-		ResizeMainFrame(int(w), int(h))
+		ResizeMainFrame(w, h)
 	}
 }
 

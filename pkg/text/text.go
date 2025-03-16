@@ -9,15 +9,47 @@ type Text interface {
 	HandleLeft()
 	HandleRight()
 	HandleChar(r rune)
+
+	//!TODO redo this
+	Body() []rune
+	Cursor() int
 }
 
 type TextImpl struct {
 	body   []rune
 	cursor int // offset of text cursor from start of body
+
+	first, last  *Line
+	lineOnTop    *Line // First line visible on the screen
+	lineOnTopNum int
+}
+
+type Line struct {
+	chars []rune
+	//!TODO add color data
+	prev, next *Line
+}
+
+func NewLine() *Line {
+	return &Line{}
 }
 
 func NewText() Text {
-	return &TextImpl{}
+	line := NewLine()
+	return &TextImpl{
+		first:        line,
+		last:         line,
+		lineOnTop:    line,
+		lineOnTopNum: 1,
+	}
+}
+
+func (t *TextImpl) Body() []rune {
+	return t.body
+}
+
+func (t *TextImpl) Cursor() int {
+	return t.cursor
 }
 
 func (t *TextImpl) HandleDelete() {
