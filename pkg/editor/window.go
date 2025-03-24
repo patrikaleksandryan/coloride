@@ -15,6 +15,7 @@ type Window struct {
 
 func NewWindow() *Window {
 	win := &Window{}
+
 	gui.InitFrame(&win.FrameImpl, 0, 0, 100, 100)
 
 	win.menu = NewMenu()

@@ -26,6 +26,10 @@ func (e *Editor) OnKeyDown(key int, mod uint16) {
 		e.text.HandleLeft()
 	case sdl.K_RIGHT:
 		e.text.HandleRight()
+	case sdl.K_UP:
+		e.text.HandleUp()
+	case sdl.K_DOWN:
+		e.text.HandleDown()
 	}
 }
 
@@ -43,17 +47,27 @@ func (e *Editor) OnCharInput(r rune) {
 }
 
 func (e *Editor) Render(x, y int) {
-	m := e.text.Body()
-	cursor := e.text.Cursor()
-	charW, _ := gui.FontSize()
+	cursorX := e.text.CursorX()
+	charW, charH := gui.FontSize()
 	color := gui.MakeColor(0, 255, 255)
-
 	X, Y := x, y
-	for i, r := range m {
-		gui.PrintChar(r, X, Y, color)
-		if i == cursor {
+
+	curLine := e.text.CurLine()
+	l := e.text.TopLine()
+	for l != nil {
+		m := l.Chars()
+		for i, r := range m {
+			gui.PrintChar(r, X, Y, color)
+			if l == curLine && i == cursorX {
+				gui.PrintChar('_', X, Y+2, color)
+			}
+			X += charW
+		}
+		if l == curLine && len(m) == cursorX {
 			gui.PrintChar('_', X, Y+2, color)
 		}
-		X += charW
+		X = x
+		Y += charH
+		l = l.Next()
 	}
 }
