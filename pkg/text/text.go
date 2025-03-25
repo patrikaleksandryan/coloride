@@ -11,8 +11,10 @@ type Text interface {
 	HandleChar(r rune)
 
 	CurLine() *Line
+	SetCurLine(lineNum int)
 	TopLine() *Line
 	CursorX() int
+	SetCursorX(cursorX int)
 
 	InsertLineAfter(l *Line) *Line
 	MergeLines(l *Line)
@@ -27,7 +29,7 @@ type TextImpl struct {
 	curLineNum int // 1-based, y
 	curLine    *Line
 
-	first, last *Line
+	first, last *Line // First and last line of document
 	topLine     *Line // First line visible on the screen
 	topLineNum  int   // 1-based
 }
@@ -162,12 +164,36 @@ func (t *TextImpl) CurLine() *Line {
 	return t.curLine
 }
 
+func (t *TextImpl) SetCurLine(lineNum int) {
+	if lineNum > 0 {
+		l := t.first
+		n := 1
+		for l.next != nil && n != lineNum {
+			l = l.next
+			n++
+		}
+		t.curLine = l
+		t.curLineNum = n
+		t.cursorX = 0
+		t.UpdateCursorMem()
+	}
+}
+
 func (t *TextImpl) TopLine() *Line {
 	return t.topLine
 }
 
 func (t *TextImpl) CursorX() int {
 	return t.cursorX
+}
+
+func (t *TextImpl) SetCursorX(cursorX int) {
+	n := len(t.curLine.chars)
+	if cursorX > n {
+		cursorX = n
+	}
+	t.cursorX = cursorX
+	t.UpdateCursorMem()
 }
 
 func (t *TextImpl) InsertLineAfter(l *Line) *Line {

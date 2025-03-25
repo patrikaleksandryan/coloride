@@ -98,8 +98,16 @@ func ResizeMainFrame(w, h int) {
 	}
 }
 
-func handleMouseDown(x, y int) {
-	mainFrame.HandleClick(x, y)
+func handleMouseMove(x, y int, buttons uint32) {
+	mainFrame.HandleMouseMove(x, y, buttons)
+}
+
+func handleMouseDown(x, y, button int) {
+	mainFrame.HandleMouseDown(x, y, button)
+}
+
+func handleMouseUp(x, y, button int) {
+	mainFrame.HandleMouseUp(x, y, button)
 }
 
 func handleCharInput(r rune) {
@@ -158,9 +166,13 @@ func handleEvents(running *bool) {
 	event := sdl.PollEvent()
 	for event != nil {
 		switch e := event.(type) {
+		case *sdl.MouseMotionEvent:
+			handleMouseMove(int(e.X), int(e.Y), e.State)
 		case *sdl.MouseButtonEvent:
-			if e.State == sdl.PRESSED && e.Button == 1 {
-				handleMouseDown(int(e.X), int(e.Y))
+			if e.State == sdl.PRESSED {
+				handleMouseDown(int(e.X), int(e.Y), int(e.Button))
+			} else if e.State == sdl.RELEASED {
+				handleMouseUp(int(e.X), int(e.Y), int(e.Button))
 			}
 		case *sdl.TextInputEvent:
 			handleTextInput(e)
@@ -176,27 +188,9 @@ func handleEvents(running *bool) {
 }
 
 func render() {
-	_ = Renderer.SetDrawColor(0, 20, 5, 255)
-	_ = Renderer.Clear()
-
-	//texts := []string{
-	//	"Hello, SDL2!",
-	//	"This is monospaced text.",
-	//	"Rendered using SDL_ttf.",
-	//	"Press ESC to exit.",
-	//}
-	//
-	//y := int32(50)
-	//for _, line := range texts {
-	//	err := renderText(Renderer, mainFont, line, 50, y)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	y += 40
-	//}
-
+	Renderer.SetDrawColor(0, 20, 5, 255)
+	Renderer.Clear()
 	mainFrame.Render(0, 0)
-
 	Renderer.Present()
 }
 

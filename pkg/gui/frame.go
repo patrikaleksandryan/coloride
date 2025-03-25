@@ -24,8 +24,15 @@ type Frame interface {
 	GetFocus()
 	LostFocus()
 
-	Click()                    //!FIXME rename?
-	HandleClick(x, y int) bool //!FIXME rename?
+	Click()
+	MouseMove(x, y int, buttons uint32)
+	MouseDown(x, y, button int)
+	MouseUp(x, y, button int)
+
+	FindPos(this Frame, x, y int) (target Frame, X, Y int)
+	HandleMouseMove(x, y int, buttons uint32)
+	HandleMouseDown(x, y, button int)
+	HandleMouseUp(x, y, button int)
 
 	OnCharInput(r rune) //!FIXME rename?
 	OnKeyDown(key int, mod uint16)
@@ -173,23 +180,52 @@ func (f *FrameImpl) Click() {
 	}
 }
 
-// HandleClick returns true if click is successful. (x; y) is relative to f.
-func (f *FrameImpl) HandleClick(x, y int) bool {
-	clicked := false
+func (f *FrameImpl) MouseMove(x, y int, buttons uint32) {
+}
+
+func (f *FrameImpl) MouseDown(x, y, button int) {
+}
+
+func (f *FrameImpl) MouseUp(x, y, button int) {
+}
+
+// FindPos returns the target frame that is under mouse position (x; y) within f,
+// and the (X; Y) relative to the target frame.
+func (f *FrameImpl) FindPos(this Frame, x, y int) (target Frame, X, Y int) {
 	if x >= 0 && x < f.w && y >= 0 && y < f.h {
-		for c := f.body.Prev(); !clicked && c != f.body; c = c.Prev() {
-			if c.Enabled() {
+		for c := f.body.Prev(); target == nil && c != f.body; c = c.Prev() {
+			if c.Visible() {
 				cx, cy := c.Pos()
-				clicked = c.HandleClick(x-cx, y-cy)
+				target, X, Y = c.FindPos(c, x-cx, y-cy)
 			}
 		}
-		// No child clicked -> clicking on f
-		if !clicked {
-			f.Click()
-			clicked = true
+		// No child under (x; y) -> choosing this frame
+		if target == nil {
+			target, X, Y = this, x, y
 		}
 	}
-	return clicked
+	return
+}
+
+func (f *FrameImpl) HandleMouseMove(x, y int, buttons uint32) {
+	target, X, Y := f.FindPos(f, x, y)
+	if target != nil {
+		target.MouseMove(X, Y, buttons)
+	}
+}
+
+func (f *FrameImpl) HandleMouseDown(x, y, button int) {
+	target, X, Y := f.FindPos(f, x, y)
+	if target != nil {
+		target.MouseDown(X, Y, button)
+	}
+}
+
+func (f *FrameImpl) HandleMouseUp(x, y, button int) {
+	target, X, Y := f.FindPos(f, x, y)
+	if target != nil {
+		target.MouseUp(X, Y, button)
+	}
 }
 
 func (f *FrameImpl) OnCharInput(r rune) {}

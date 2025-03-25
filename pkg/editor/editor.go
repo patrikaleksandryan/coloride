@@ -71,3 +71,13 @@ func (e *Editor) Render(x, y int) {
 		l = l.Next()
 	}
 }
+
+func (e *Editor) MouseDown(x, y, button int) {
+	if button == 1 {
+		charW, charH := gui.FontSize()
+		lineNum := y/charH + 1
+		cursorX := x / charW
+		e.text.SetCurLine(lineNum)
+		e.text.SetCursorX(cursorX)
+	}
+}
