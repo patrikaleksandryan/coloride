@@ -61,8 +61,8 @@ func InitFrame(frame *FrameImpl, x, y, w, h int) {
 	frame.h = h
 	frame.visible = true
 	frame.enabled = true
-	frame.color = MakeColor(20, 100, 190)
-	frame.bgColor = MakeColor(0, 20, 50)
+	frame.color = MakeColor(20, 60, 70)
+	frame.bgColor = MakeColor(10, 40, 50)
 
 	lock := &FrameImpl{}
 	lock.prev = lock

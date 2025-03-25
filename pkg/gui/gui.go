@@ -176,7 +176,7 @@ func handleEvents(running *bool) {
 }
 
 func render() {
-	_ = Renderer.SetDrawColor(0, 0, 0, 255)
+	_ = Renderer.SetDrawColor(0, 20, 5, 255)
 	_ = Renderer.Clear()
 
 	//texts := []string{
