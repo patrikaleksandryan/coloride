@@ -207,6 +207,18 @@ func (t *TextImpl) HandleEnter() {
 	t.UpdateCursorMem()
 }
 
+func (t *TextImpl) HandleLeft(shift bool) {
+	t.handleSelectLeft(shift)
+	if t.cursorX > 0 {
+		t.cursorX--
+	} else if t.curLine.prev != nil {
+		t.curLineNum--
+		t.curLine = t.curLine.prev
+		t.cursorX = len(t.curLine.chars)
+	}
+	t.UpdateCursorMem()
+}
+
 func (t *TextImpl) handleSelectLeft(shift bool) {
 	if !shift {
 		t.ClearSelection()
@@ -236,14 +248,14 @@ func (t *TextImpl) handleSelectLeft(shift bool) {
 	}
 }
 
-func (t *TextImpl) HandleLeft(shift bool) {
-	t.handleSelectLeft(shift)
-	if t.cursorX > 0 {
-		t.cursorX--
-	} else if t.curLine.prev != nil {
-		t.curLineNum--
-		t.curLine = t.curLine.prev
-		t.cursorX = len(t.curLine.chars)
+func (t *TextImpl) HandleRight(shift bool) {
+	t.handleSelectRight(shift)
+	if t.cursorX < len(t.curLine.chars) {
+		t.cursorX++
+	} else if t.curLine.next != nil {
+		t.curLineNum++
+		t.curLine = t.curLine.next
+		t.cursorX = 0
 	}
 	t.UpdateCursorMem()
 }
@@ -276,16 +288,19 @@ func (t *TextImpl) handleSelectRight(shift bool) {
 	}
 }
 
-func (t *TextImpl) HandleRight(shift bool) {
-	t.handleSelectRight(shift)
-	if t.cursorX < len(t.curLine.chars) {
-		t.cursorX++
-	} else if t.curLine.next != nil {
-		t.curLineNum++
-		t.curLine = t.curLine.next
+func (t *TextImpl) HandleUp(shift bool) {
+	t.handleSelectUp(shift)
+	if t.curLine.prev != nil {
+		t.curLineNum--
+		t.curLine = t.curLine.prev
+
+		t.cursorX = t.cursorMem
+		if t.cursorX > len(t.curLine.chars) {
+			t.cursorX = len(t.curLine.chars)
+		}
+	} else {
 		t.cursorX = 0
 	}
-	t.UpdateCursorMem()
 }
 
 func (t *TextImpl) handleSelectUp(shift bool) {
@@ -313,34 +328,25 @@ func (t *TextImpl) handleSelectUp(shift bool) {
 			if t.selection.CharTo > length {
 				t.selection.CharTo = length
 			}
-
-			// TODO: Reusable code in separate function
-			if t.selection.LineFrom == t.selection.LineTo &&
-				t.selection.CharFrom == t.selection.CharTo {
-				t.ClearSelection()
-			} else if t.selection.LineFrom > t.selection.LineTo ||
-				t.selection.LineFrom == t.selection.LineTo && t.selection.CharFrom > t.selection.CharTo {
-				t.selection.CharFrom, t.selection.CharTo = t.selection.CharTo, t.selection.CharFrom
-				t.selection.LineFrom, t.selection.LineTo = t.selection.LineTo, t.selection.LineFrom
-			}
+			t.normalizeSelection()
 		}
 	} else if t.selected {
 		t.selection.CharFrom = 0
 	}
 }
 
-func (t *TextImpl) HandleUp(shift bool) {
-	t.handleSelectUp(shift)
-	if t.curLine.prev != nil {
-		t.curLineNum--
-		t.curLine = t.curLine.prev
+func (t *TextImpl) HandleDown(shift bool) {
+	t.handleSelectDown(shift)
+	if t.curLine.next != nil {
+		t.curLineNum++
+		t.curLine = t.curLine.next
 
 		t.cursorX = t.cursorMem
 		if t.cursorX > len(t.curLine.chars) {
 			t.cursorX = len(t.curLine.chars)
 		}
 	} else {
-		t.cursorX = 0
+		t.cursorX = len(t.curLine.chars)
 	}
 }
 
@@ -361,16 +367,7 @@ func (t *TextImpl) handleSelectDown(shift bool) {
 			if t.selection.CharFrom > length {
 				t.selection.CharFrom = length
 			}
-
-			// TODO: Reusable code in separate function
-			if t.selection.LineFrom == t.selection.LineTo &&
-				t.selection.CharFrom == t.selection.CharTo {
-				t.ClearSelection()
-			} else if t.selection.LineFrom > t.selection.LineTo ||
-				t.selection.LineFrom == t.selection.LineTo && t.selection.CharFrom > t.selection.CharTo {
-				t.selection.CharFrom, t.selection.CharTo = t.selection.CharTo, t.selection.CharFrom
-				t.selection.LineFrom, t.selection.LineTo = t.selection.LineTo, t.selection.LineFrom
-			}
+			t.normalizeSelection()
 		} else { // On the right edge of selection
 			t.selection.LineTo++
 			length := len(t.curLine.next.chars)
@@ -385,18 +382,14 @@ func (t *TextImpl) handleSelectDown(shift bool) {
 	}
 }
 
-func (t *TextImpl) HandleDown(shift bool) {
-	t.handleSelectDown(shift)
-	if t.curLine.next != nil {
-		t.curLineNum++
-		t.curLine = t.curLine.next
-
-		t.cursorX = t.cursorMem
-		if t.cursorX > len(t.curLine.chars) {
-			t.cursorX = len(t.curLine.chars)
-		}
-	} else {
-		t.cursorX = len(t.curLine.chars)
+func (t *TextImpl) normalizeSelection() {
+	if t.selection.LineFrom == t.selection.LineTo &&
+		t.selection.CharFrom == t.selection.CharTo {
+		t.ClearSelection()
+	} else if t.selection.LineFrom > t.selection.LineTo ||
+		t.selection.LineFrom == t.selection.LineTo && t.selection.CharFrom > t.selection.CharTo {
+		t.selection.CharFrom, t.selection.CharTo = t.selection.CharTo, t.selection.CharFrom
+		t.selection.LineFrom, t.selection.LineTo = t.selection.LineTo, t.selection.LineFrom
 	}
 }
 
