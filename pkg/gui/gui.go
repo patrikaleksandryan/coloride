@@ -12,8 +12,8 @@ import (
 const (
 	// !TODO rename to "defaultFontSize" etc. and allow to set up from outside the gui
 	fontSize = 22
-	charW    = 16
-	charH    = 26
+	charW    = 13
+	charH    = 27
 )
 
 var (
@@ -188,7 +188,7 @@ func handleEvents(running *bool) {
 }
 
 func render() {
-	Renderer.SetDrawColor(0, 20, 5, 255)
+	Renderer.SetDrawColor(0, 0, 0, 255)
 	Renderer.Clear()
 	mainFrame.Render(0, 0)
 	Renderer.Present()

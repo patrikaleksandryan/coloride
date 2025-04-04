@@ -14,7 +14,7 @@ const (
 
 type Font interface {
 	Size() (charW, charH int)
-	PrintChar(r rune, x, y int, color sdl.Color)
+	PrintChar(r rune, x, y int, color, bgColor sdl.Color)
 	Close()
 }
 
@@ -121,13 +121,18 @@ func (f *FontImpl) Size() (charW, charH int) {
 	return
 }
 
-func (f *FontImpl) PrintChar(r rune, x, y int, color sdl.Color) {
+func (f *FontImpl) PrintChar(r rune, x, y int, color, bgColor sdl.Color) {
 	w, h := int32(f.charW), int32(f.charH)
 	srcX := r % int32(charsInRow) * int32(f.charW)
 	srcY := r / int32(charsInRow) * int32(f.charH)
 	src := sdl.Rect{X: srcX, Y: srcY, W: w, H: h}
 	dst := sdl.Rect{X: int32(x), Y: int32(y), W: w, H: h}
-	_ = src
-	_ = dst
+
+	if bgColor.A != 0 {
+		f.renderer.SetDrawColor(bgColor.R, bgColor.G, bgColor.B, bgColor.A)
+		f.renderer.FillRect(&dst)
+	}
+
+	f.atlas.SetColorMod(color.R, color.G, color.B)
 	f.renderer.Copy(f.atlas, &src, &dst)
 }
