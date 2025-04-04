@@ -226,9 +226,12 @@ func (t *TextImpl) handleSelectLeft(shift bool) {
 		lineLen := len(t.curLine.prev.chars)
 		if !t.selected {
 			t.SetSelection(t.curLineNum-1, t.curLineNum, lineLen, 0)
-		} else {
+		} else if t.IsLeftSelectionEdge() {
 			t.selection.CharFrom = lineLen
 			t.selection.LineFrom--
+		} else {
+			t.selection.CharTo = lineLen
+			t.selection.LineTo--
 		}
 	}
 }
@@ -261,9 +264,11 @@ func (t *TextImpl) handleSelectRight(shift bool) {
 			t.selection.CharTo++
 		}
 	} else if t.curLine.next != nil {
-		lineLen := len(t.curLine.chars)
 		if !t.selected {
-			t.SetSelection(t.curLineNum, t.curLineNum+1, lineLen, 0)
+			t.SetSelection(t.curLineNum, t.curLineNum+1, len(t.curLine.chars), 0)
+		} else if t.IsLeftSelectionEdge() {
+			t.selection.CharFrom = 0
+			t.selection.LineFrom++
 		} else {
 			t.selection.CharTo = 0
 			t.selection.LineTo++
@@ -303,19 +308,24 @@ func (t *TextImpl) handleSelectUp(shift bool) {
 			}
 		} else { // On the right edge of selection
 			t.selection.LineTo--
+			t.selection.CharTo = t.cursorMem
 			length := len(t.curLine.prev.chars)
 			if t.selection.CharTo > length {
 				t.selection.CharTo = length
 			}
 
+			// TODO: Reusable code in separate function
 			if t.selection.LineFrom == t.selection.LineTo &&
 				t.selection.CharFrom == t.selection.CharTo {
 				t.ClearSelection()
-			} else if t.selection.LineFrom > t.selection.LineTo || t.selection.CharFrom > t.selection.CharTo {
+			} else if t.selection.LineFrom > t.selection.LineTo ||
+				t.selection.LineFrom == t.selection.LineTo && t.selection.CharFrom > t.selection.CharTo {
 				t.selection.CharFrom, t.selection.CharTo = t.selection.CharTo, t.selection.CharFrom
 				t.selection.LineFrom, t.selection.LineTo = t.selection.LineTo, t.selection.LineFrom
 			}
 		}
+	} else if t.selected {
+		t.selection.CharFrom = 0
 	}
 }
 
@@ -329,11 +339,50 @@ func (t *TextImpl) HandleUp(shift bool) {
 		if t.cursorX > len(t.curLine.chars) {
 			t.cursorX = len(t.curLine.chars)
 		}
+	} else {
+		t.cursorX = 0
 	}
 }
 
 func (t *TextImpl) handleSelectDown(shift bool) {
-	//!TODO
+	if !shift {
+		t.ClearSelection()
+	} else if t.curLine.next != nil {
+		if !t.selected {
+			charTo := len(t.curLine.next.chars)
+			if t.cursorX < charTo {
+				charTo = t.cursorX
+			}
+			t.SetSelection(t.curLineNum, t.curLineNum+1, t.cursorX, charTo)
+		} else if t.IsLeftSelectionEdge() {
+			t.selection.LineFrom++
+			t.selection.CharFrom = t.cursorMem
+			length := len(t.curLine.next.chars)
+			if t.selection.CharFrom > length {
+				t.selection.CharFrom = length
+			}
+
+			// TODO: Reusable code in separate function
+			if t.selection.LineFrom == t.selection.LineTo &&
+				t.selection.CharFrom == t.selection.CharTo {
+				t.ClearSelection()
+			} else if t.selection.LineFrom > t.selection.LineTo ||
+				t.selection.LineFrom == t.selection.LineTo && t.selection.CharFrom > t.selection.CharTo {
+				t.selection.CharFrom, t.selection.CharTo = t.selection.CharTo, t.selection.CharFrom
+				t.selection.LineFrom, t.selection.LineTo = t.selection.LineTo, t.selection.LineFrom
+			}
+		} else { // On the right edge of selection
+			t.selection.LineTo++
+			length := len(t.curLine.next.chars)
+			if t.cursorMem > length {
+				t.selection.CharTo = length
+			} else {
+				t.selection.CharTo = t.cursorMem
+			}
+		}
+	} else if t.selected {
+		t.selection.CharTo = len(t.curLine.chars)
+	}
 }
 
 func (t *TextImpl) HandleDown(shift bool) {
@@ -346,6 +395,8 @@ func (t *TextImpl) HandleDown(shift bool) {
 		if t.cursorX > len(t.curLine.chars) {
 			t.cursorX = len(t.curLine.chars)
 		}
+	} else {
+		t.cursorX = len(t.curLine.chars)
 	}
 }
 
