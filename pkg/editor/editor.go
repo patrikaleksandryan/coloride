@@ -34,6 +34,10 @@ func (e *Editor) OnKeyDown(key int, mod uint16) {
 		e.text.HandleUp(isShiftPressed(mod))
 	case sdl.K_DOWN:
 		e.text.HandleDown(isShiftPressed(mod))
+	case sdl.K_HOME:
+		e.text.HandleHome()
+	case sdl.K_END:
+		e.text.HandleEnd()
 	}
 }
 

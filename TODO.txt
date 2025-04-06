@@ -1,15 +1,17 @@
-[_] Go to first character of text when pressing [arrow up] on the first line
-[_] Go to last character of text when pressing [arrow down] on the last line
-[_] Selection with [SHIFT + arrow down]
-[_] TAB
-[_] HOME
-[_] END
+[x] Go to first character of text when pressing [arrow up] on the first line
+[x] Go to last character of text when pressing [arrow down] on the last line
+[x] Selection with [SHIFT + arrow down]
+[x] HOME
+[x] END
 [_] Selection with [SHIFT+HOME]
 [_] Selection with [SHIFT+END]
-[_] Vertical scroll
 [_] PageUp
 [_] PageDown
 [_] Selection with [SHIFT+PageUp]
 [_] Selection with [SHIFT+PageDown]
+[_] Indentation on enter
+[_] Vertical scroll
 [_] Horizontal scroll
+[_] TAB
+
 

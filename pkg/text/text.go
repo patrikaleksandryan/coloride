@@ -11,6 +11,8 @@ type Text interface {
 	HandleDelete()
 	HandleBackspace()
 	HandleEnter()
+	HandleHome()
+	HandleEnd()
 	HandleLeft(shift bool)
 	HandleRight(shift bool)
 	HandleUp(shift bool)
@@ -127,6 +129,10 @@ func (t *TextImpl) UpdateCursorMem() {
 	t.cursorMem = t.cursorX
 }
 
+func (t *TextImpl) HandeEscape() {
+
+}
+
 func (t *TextImpl) HandleDelete() {
 	if len(t.curLine.chars) > t.cursorX {
 		t.curLine.chars = append(t.curLine.chars[:t.cursorX], t.curLine.chars[t.cursorX+1:]...)
@@ -185,6 +191,14 @@ func (t *TextImpl) IsLeftSelectionEdge() bool {
 	return t.curLineNum == t.selection.LineFrom && t.cursorX == t.selection.CharFrom
 }
 
+func (t *TextImpl) IndentLength(line *Line) int {
+	i := 0
+	for i != len(line.chars) && line.chars[i] <= ' ' {
+		i++
+	}
+	return i
+}
+
 func (t *TextImpl) ClearSelection() {
 	t.selected = false
 }
@@ -207,8 +221,23 @@ func (t *TextImpl) HandleEnter() {
 	t.UpdateCursorMem()
 }
 
+func (t *TextImpl) HandleHome() {
+	ident := t.IndentLength(t.curLine)
+	if t.cursorX > ident {
+		t.cursorX = ident
+	} else {
+		t.cursorX = 0
+	}
+	t.UpdateCursorMem()
+}
+
+func (t *TextImpl) HandleEnd() {
+	t.cursorX = len(t.curLine.chars)
+	t.UpdateCursorMem()
+}
+
 func (t *TextImpl) HandleLeft(shift bool) {
-	t.handleSelectLeft(shift)
+	t.handleShiftLeft(shift)
 	if t.cursorX > 0 {
 		t.cursorX--
 	} else if t.curLine.prev != nil {
@@ -219,7 +248,7 @@ func (t *TextImpl) HandleLeft(shift bool) {
 	t.UpdateCursorMem()
 }
 
-func (t *TextImpl) handleSelectLeft(shift bool) {
+func (t *TextImpl) handleShiftLeft(shift bool) {
 	if !shift {
 		t.ClearSelection()
 	} else if t.cursorX > 0 {
@@ -249,7 +278,7 @@ func (t *TextImpl) handleSelectLeft(shift bool) {
 }
 
 func (t *TextImpl) HandleRight(shift bool) {
-	t.handleSelectRight(shift)
+	t.handleShiftRight(shift)
 	if t.cursorX < len(t.curLine.chars) {
 		t.cursorX++
 	} else if t.curLine.next != nil {
@@ -260,7 +289,7 @@ func (t *TextImpl) HandleRight(shift bool) {
 	t.UpdateCursorMem()
 }
 
-func (t *TextImpl) handleSelectRight(shift bool) {
+func (t *TextImpl) handleShiftRight(shift bool) {
 	if !shift {
 		t.ClearSelection()
 	} else if t.cursorX < len(t.curLine.chars) {
@@ -289,7 +318,7 @@ func (t *TextImpl) handleSelectRight(shift bool) {
 }
 
 func (t *TextImpl) HandleUp(shift bool) {
-	t.handleSelectUp(shift)
+	t.handleShiftUp(shift)
 	if t.curLine.prev != nil {
 		t.curLineNum--
 		t.curLine = t.curLine.prev
@@ -303,7 +332,7 @@ func (t *TextImpl) HandleUp(shift bool) {
 	}
 }
 
-func (t *TextImpl) handleSelectUp(shift bool) {
+func (t *TextImpl) handleShiftUp(shift bool) {
 	if !shift {
 		t.ClearSelection()
 	} else if t.curLine.prev != nil {
@@ -336,7 +365,7 @@ func (t *TextImpl) handleSelectUp(shift bool) {
 }
 
 func (t *TextImpl) HandleDown(shift bool) {
-	t.handleSelectDown(shift)
+	t.handleShiftDown(shift)
 	if t.curLine.next != nil {
 		t.curLineNum++
 		t.curLine = t.curLine.next
@@ -350,7 +379,7 @@ func (t *TextImpl) HandleDown(shift bool) {
 	}
 }
 
-func (t *TextImpl) handleSelectDown(shift bool) {
+func (t *TextImpl) handleShiftDown(shift bool) {
 	if !shift {
 		t.ClearSelection()
 	} else if t.curLine.next != nil {
