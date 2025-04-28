@@ -81,7 +81,6 @@ func (f *FontImpl) printCharToAtlas(atlas *sdl.Surface, r rune, color sdl.Color)
 func (f *FontImpl) RenderAtlas() error {
 	atlasW := f.charW * charsInRow
 	atlasH := f.charH * charRows
-	fmt.Println("ATLAS SIZE ", atlasW, atlasH)
 	color := sdl.Color{R: 255, G: 255, B: 255, A: 255}
 
 	atlasSurface, err := sdl.CreateRGBSurface(0, int32(atlasW), int32(atlasH), 32, 0xFF0000, 0xFF00, 0xFF, 0xFF000000)

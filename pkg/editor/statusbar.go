@@ -22,11 +22,5 @@ func (s *Statusbar) Render(x, y int) {
 	gui.SetColor(s.BgColor())
 	gui.Renderer.FillRect(&rect)
 
-	gui.SetColor(s.Color())
-	gui.Renderer.DrawRect(&rect)
-
-	rect = sdl.Rect{X: int32(x + 5), Y: int32(y + 5), W: int32(w - 7), H: int32(h - 7)}
-	gui.Renderer.DrawRect(&rect)
-
 	s.RenderChildren(x, y)
 }

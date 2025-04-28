@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"github.com/patrikaleksandryan/coloride/pkg/color"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -31,11 +32,30 @@ func (b *Button) Render(x, y int) {
 	SetColor(b.bgColor)
 	Renderer.FillRect(&rect)
 
-	SetColor(b.color)
-	Renderer.DrawRect(&rect)
+	lineColor1 := color.MakeRGBA(235, 235, 207, 255)
+	lineColor2 := color.MakeRGBA(113, 92, 72, 255)
 
-	rect = sdl.Rect{X: int32(x + 2), Y: int32(y + 2), W: int32(b.w - 4), H: int32(b.h - 4)}
-	Renderer.DrawRect(&rect)
+	if b.MousePressed() {
+		lineColor1 = lineColor2
+	}
+
+	SetColor(lineColor1)
+	Renderer.DrawLine(int32(x), int32(y), int32(x+b.w-1), int32(y))
+	Renderer.DrawLine(int32(x+1), int32(y+1), int32(x+b.w-2), int32(y+1))
+	Renderer.DrawLine(int32(x), int32(y+1), int32(x), int32(y+b.h-2))
+	Renderer.DrawLine(int32(x+1), int32(y+2), int32(x+1), int32(y+b.h-3))
+	SetColor(lineColor2)
+	Renderer.DrawLine(int32(x+b.w-1), int32(y+1), int32(x+b.w-1), int32(y+b.h-1))
+	Renderer.DrawLine(int32(x+b.w-2), int32(y+2), int32(x+b.w-2), int32(y+b.h-2))
+	Renderer.DrawLine(int32(x), int32(y+b.h-1), int32(x+b.w-2), int32(y+b.h-1))
+	Renderer.DrawLine(int32(x+1), int32(y+b.h-2), int32(x+b.w-3), int32(y+b.h-2))
+
+	x2, y2 := x+2, y+2
+	if b.MousePressed() {
+		x2++
+		y2++
+	}
+	PrintCentered(b.caption, x2, y2, b.w, b.h, b.color, color.Transparent)
 
 	b.RenderChildren(x, y)
 }

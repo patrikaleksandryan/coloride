@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"github.com/patrikaleksandryan/coloride/pkg/color"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -16,10 +17,11 @@ type Frame interface {
 	SetEnabled(enabled bool)
 	Focused() bool
 	SetFocused(focused bool)
-	Color() Color
-	SetColor(color Color)
-	BgColor() Color
-	SetBgColor(color Color)
+	MousePressed() bool
+	Color() color.Color
+	SetColor(color color.Color)
+	BgColor() color.Color
+	SetBgColor(color color.Color)
 
 	GetFocus()
 	LostFocus()
@@ -31,8 +33,7 @@ type Frame interface {
 
 	FindPos(this Frame, x, y int) (target Frame, X, Y int)
 	HandleMouseMove(x, y int, buttons uint32)
-	HandleMouseDown(x, y, button int)
-	HandleMouseUp(x, y, button int)
+	HandleMouseDown(x, y, button int) (target Frame, X, Y int)
 
 	OnCharInput(r rune) //!FIXME rename?
 	OnKeyDown(key int, mod uint16)
@@ -41,6 +42,9 @@ type Frame interface {
 	RenderChildren(x, y int)
 	Render(x, y int)
 
+	Append(child Frame)
+	HasChildren() bool
+	FirstChild() Frame
 	Prev() Frame
 	SetPrev(prev Frame)
 	Next() Frame
@@ -53,12 +57,16 @@ type FrameImpl struct {
 	visible        bool
 	enabled        bool
 	focused        bool
-	color, bgColor Color
+	mousePressed   bool // Whether mouse button is pressed on and is within the frame
+	color, bgColor color.Color
 
 	body       Frame // Ring with a lock
 	prev, next Frame
 
-	OnClick func()
+	OnClick     func()
+	OnMouseMove func(x, y int, buttons uint32)
+	OnMouseDown func(x, y, button int)
+	OnMouseUp   func(x, y, button int)
 }
 
 func InitFrame(frame *FrameImpl, x, y, w, h int) {
@@ -68,8 +76,8 @@ func InitFrame(frame *FrameImpl, x, y, w, h int) {
 	frame.h = h
 	frame.visible = true
 	frame.enabled = true
-	frame.color = MakeColor(90, 90, 90)
-	frame.bgColor = MakeColor(180, 180, 180)
+	frame.color = color.MakeColor(90, 90, 90)
+	frame.bgColor = color.MakeColor(182, 150, 121)
 
 	lock := &FrameImpl{}
 	lock.prev = lock
@@ -150,19 +158,23 @@ func (f *FrameImpl) SetFocused(focused bool) {
 	f.focused = focused
 }
 
-func (f *FrameImpl) Color() Color {
+func (f *FrameImpl) MousePressed() bool {
+	return f.mousePressed
+}
+
+func (f *FrameImpl) Color() color.Color {
 	return f.color
 }
 
-func (f *FrameImpl) SetColor(color Color) {
+func (f *FrameImpl) SetColor(color color.Color) {
 	f.color = color
 }
 
-func (f *FrameImpl) BgColor() Color {
+func (f *FrameImpl) BgColor() color.Color {
 	return f.bgColor
 }
 
-func (f *FrameImpl) SetBgColor(color Color) {
+func (f *FrameImpl) SetBgColor(color color.Color) {
 	f.bgColor = color
 }
 
@@ -181,27 +193,41 @@ func (f *FrameImpl) Click() {
 }
 
 func (f *FrameImpl) MouseMove(x, y int, buttons uint32) {
+	f.mousePressed = buttons&1 != 0 && x >= 0 && x < f.w && y >= 0 && y < f.h
+	if f.OnMouseMove != nil {
+		f.OnMouseMove(x, y, buttons)
+	}
 }
 
 func (f *FrameImpl) MouseDown(x, y, button int) {
+	f.mousePressed = button == 1
+	if f.OnMouseDown != nil {
+		f.OnMouseDown(x, y, button)
+	}
 }
 
 func (f *FrameImpl) MouseUp(x, y, button int) {
+	f.mousePressed = false
+	if f.OnMouseUp != nil {
+		f.OnMouseUp(x, y, button)
+	}
 }
 
 // FindPos returns the target frame that is under mouse position (x; y) within f,
-// and the (X; Y) relative to the target frame.
+// and the position of the target frame relative to f.
 func (f *FrameImpl) FindPos(this Frame, x, y int) (target Frame, X, Y int) {
 	if x >= 0 && x < f.w && y >= 0 && y < f.h {
 		for c := f.body.Prev(); target == nil && c != f.body; c = c.Prev() {
 			if c.Visible() {
 				cx, cy := c.Pos()
 				target, X, Y = c.FindPos(c, x-cx, y-cy)
+				X += cx
+				Y += cy
 			}
 		}
 		// No child under (x; y) -> choosing this frame
 		if target == nil {
-			target, X, Y = this, x, y
+			target, X, Y = this, 0, 0
 		}
 	}
 	return
@@ -210,22 +236,16 @@ func (f *FrameImpl) FindPos(this Frame, x, y int) (target Frame, X, Y int) {
 func (f *FrameImpl) HandleMouseMove(x, y int, buttons uint32) {
 	target, X, Y := f.FindPos(f, x, y)
 	if target != nil {
-		target.MouseMove(X, Y, buttons)
+		target.MouseMove(x-X, y-Y, buttons)
 	}
 }
 
-func (f *FrameImpl) HandleMouseDown(x, y, button int) {
-	target, X, Y := f.FindPos(f, x, y)
+func (f *FrameImpl) HandleMouseDown(x, y, button int) (target Frame, X, Y int) {
+	target, X, Y = f.FindPos(f, x, y)
 	if target != nil {
-		target.MouseDown(X, Y, button)
+		target.MouseDown(x-X, y-Y, button)
 	}
-}
-
-func (f *FrameImpl) HandleMouseUp(x, y, button int) {
-	target, X, Y := f.FindPos(f, x, y)
-	if target != nil {
-		target.MouseUp(X, Y, button)
-	}
+	return
 }
 
 func (f *FrameImpl) OnCharInput(r rune) {}
@@ -236,6 +256,14 @@ func (f *FrameImpl) OnKeyUp(key int, mod uint16) {}
 
 func (f *FrameImpl) HasChildren() bool {
 	return f.body != f.body.Next()
+}
+
+func (f *FrameImpl) FirstChild() Frame {
+	child := f.body.Next()
+	if child == f.body {
+		return nil
+	}
+	return child
 }
 
 func (f *FrameImpl) RenderChildren(x, y int) {
@@ -249,11 +277,18 @@ func (f *FrameImpl) RenderChildren(x, y int) {
 			rect, nonEmpty = rect.Intersect(&parentIntersection)
 		}
 		if nonEmpty {
-			Renderer.SetClipRect(&rect)
 			for c := f.body.Next(); c != f.body; c = c.Next() {
 				if c.Visible() {
 					cx, cy := c.Pos()
-					c.Render(x+cx, y+cy)
+					cw, ch := c.Size()
+					cx += x
+					cy += y
+					childRect := sdl.Rect{X: int32(cx), Y: int32(cy), W: int32(cw), H: int32(ch)}
+					rect2, nonEmpty2 := childRect.Intersect(&rect)
+					if nonEmpty2 {
+						Renderer.SetClipRect(&rect2)
+						c.Render(cx, cy)
+					}
 				}
 			}
 			// Revert parent clip

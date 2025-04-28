@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	// !TODO rename to "defaultFontSize" etc. and allow to set up from outside the gui
-	fontSize = 22
-	charW    = 13
-	charH    = 27
+	zoom     = 2
+	fontSize = 16 * zoom
+	charW    = 8 * zoom
+	charH    = 16 * zoom
 )
 
 var (
@@ -21,9 +21,11 @@ var (
 	Renderer *sdl.Renderer
 
 	mainFont  font.Font
-	mainFrame *FrameImpl //!FIXME change to Frame, add Append
+	mainFrame Frame
 
-	focusFrame Frame
+	focusFrame             Frame
+	mouseDownFrame         Frame
+	mouseDownX, mouseDownY int
 )
 
 // Append appends the given frame to the main frame.
@@ -68,8 +70,9 @@ func Init(windowWidth, windowHeight int) error {
 		return fmt.Errorf("could not open font: %v", err)
 	}
 
-	mainFrame = &FrameImpl{}
-	InitFrame(mainFrame, 0, 0, 0, 0)
+	mf := &FrameImpl{}
+	InitFrame(mf, 0, 0, 0, 0)
+	mainFrame = mf
 
 	return nil
 }
@@ -93,21 +96,37 @@ func ResizeMainFrame(w, h int) {
 	if w != oldW || h != oldH {
 		mainFrame.Resize(w, h)
 		if mainFrame.HasChildren() {
-			SetGeometry(mainFrame.body.Next(), 0, 0, w, h)
+			child := mainFrame.FirstChild()
+			if child != nil {
+				SetGeometry(child, 0, 0, w, h)
+			}
 		}
 	}
 }
 
 func handleMouseMove(x, y int, buttons uint32) {
-	mainFrame.HandleMouseMove(x, y, buttons)
+	if mouseDownFrame != nil {
+		mouseDownFrame.MouseMove(x-mouseDownX, y-mouseDownY, buttons)
+	} else {
+		mainFrame.HandleMouseMove(x, y, buttons)
+	}
 }
 
 func handleMouseDown(x, y, button int) {
-	mainFrame.HandleMouseDown(x, y, button)
+	mouseDownFrame, mouseDownX, mouseDownY =
+		mainFrame.HandleMouseDown(x, y, button)
 }
 
 func handleMouseUp(x, y, button int) {
-	mainFrame.HandleMouseUp(x, y, button)
+	if mouseDownFrame != nil {
+		x, y = x-mouseDownX, y-mouseDownY
+		mousePressed := mouseDownFrame.MousePressed()
+		mouseDownFrame.MouseUp(x, y, button)
+		if mousePressed && button == 1 {
+			mouseDownFrame.Click()
+		}
+		mouseDownFrame = nil
+	}
 }
 
 func handleCharInput(r rune) {

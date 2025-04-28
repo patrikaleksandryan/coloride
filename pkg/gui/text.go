@@ -1,9 +1,26 @@
 package gui
 
-import "github.com/veandco/go-sdl2/sdl"
+import (
+	"github.com/patrikaleksandryan/coloride/pkg/color"
+	"github.com/veandco/go-sdl2/sdl"
+)
 
-func PrintChar(r rune, x, y int, color, bgColor Color) {
+func PrintChar(r rune, x, y int, color, bgColor color.Color) {
 	mainFont.PrintChar(r, x, y, sdl.Color(color), sdl.Color(bgColor))
+}
+
+func Print(s string, x, y int, color, bgColor color.Color) {
+	charW, _ := mainFont.Size()
+	for _, r := range s {
+		PrintChar(r, x, y, color, bgColor)
+		x += charW
+	}
+}
+
+func PrintCentered(s string, x, y, w, h int, color, bgColor color.Color) {
+	charW, charH := mainFont.Size()
+	strW := charW * len(s)
+	Print(s, x+(w-strW)/2, y+(h-charH)/2, color, bgColor)
 }
 
 func FontSize() (charW, charH int) {

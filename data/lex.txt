@@ -1,0 +1,129 @@
+GOROOT=/opt/homebrew/opt/go/libexec #gosetup
+GOPATH=/Users/kekc/go #gosetup
+/opt/homebrew/opt/go/libexec/bin/go build -o /Users/kekc/Library/Caches/JetBrains/GoLand2024.2/tmp/GoLand/___2go_build_github_com_patrikaleksandryan_coloride_cmd_coloride github.com/patrikaleksandryan/coloride/cmd/coloride #gosetup
+/Users/kekc/Library/Caches/JetBrains/GoLand2024.2/tmp/GoLand/___2go_build_github_com_patrikaleksandryan_coloride_cmd_coloride
+STRING "package main"
+NEW LINE
+NEW LINE
+STRING "import ("
+NEW LINE
+STRING "        "fmt""
+NEW LINE
+STRING "        "os""
+NEW LINE
+NEW LINE
+STRING "        "github.com/patrikaleksandryan/coloride/pkg/editor""
+NEW LINE
+STRING "        "github.com/patrikaleksandryan/coloride/pkg/gui""
+NEW LINE
+STRING ")"
+NEW LINE
+NEW LINE
+STRING "const (         "
+COLOR MARKER
+STRING "5 B"
+NEW LINE
+STRING "        windowWidth  = 1000             "
+COLOR MARKER
+STRING "B"
+NEW LINE
+STRING "        windowDepth  = 20               "
+COLOR MARKER
+STRING "B"
+NEW LINE
+STRING "        windowHeight = 750              "
+COLOR MARKER
+STRING "13B"
+NEW LINE
+STRING ")"
+NEW LINE
+NEW LINE
+STRING "func run() error {"
+NEW LINE
+STRING "        err := gui.Init(windowWidth, windowHeight)              "
+COLOR MARKER
+STRING "2 3R! 4 3G!"
+NEW LINE
+STRING "        if err != nil {"
+NEW LINE
+STRING "                return err                                                             "
+COLOR MARKER
+STRING "Y!"
+NEW LINE
+STRING "        }"
+NEW LINE
+NEW LINE
+STRING "        initInterface("Hello world", 412)                             "
+COLOR MARKER
+STRING "16 13R"
+NEW LINE
+NEW LINE
+STRING "        err = /* gui.Run()"
+NEW LINE
+STRING "        if err != nil {"
+NEW LINE
+STRING "                return err"
+NEW LINE
+STRING "        }*/ fmt.Println("Hello")                "
+COLOR MARKER
+STRING "6 R3 "
+COLOR MARKER
+STRING "9 R"
+NEW LINE
+NEW LINE
+STRING "        gui.Close()"
+NEW LINE
+NEW LINE
+STRING "        return nil"
+NEW LINE
+STRING "}"
+NEW LINE
+NEW LINE
+STRING "type User struct {"
+NEW LINE
+STRING "        Name            /* this is a comment*/ string"
+NEW LINE
+STRING "        Age  int // Also this is a comment"
+NEW LINE
+STRING "}"
+NEW LINE
+NEW LINE
+STRING "func initInterface() {"
+NEW LINE
+STRING "        window := editor.NewWindow  ('x', 'y')"
+NEW LINE
+STRING "        gui.Append(window, ` + "`" + `Hello world"
+NEW LINE
+STRING "                another text here"
+NEW LINE
+STRING "                this is a text` + "`" + `)"
+NEW LINE
+STRING "        gui.SetFocus(window.Editor              ())"
+NEW LINE
+STRING "}"
+NEW LINE
+END OF TEXT
+
+Process finished with the exit code 0
+
+
+
+
+
+func (t *TextImpl) scanFile(s *scanner.Scanner) error {
+	s.Scan()
+	for s.Sym != scanner.EOT {
+		if s.Sym == scanner.String {
+			fmt.Printf("STRING \"%s\"\n", string(s.String))
+		} else if s.Sym == scanner.ColorMarker {
+			fmt.Println("COLOR MARKER")
+		} else if s.Sym == scanner.NewLine {
+			fmt.Println("NEW LINE")
+		}
+		s.Scan()
+	}
+	fmt.Println("END OF TEXT")
+	return nil
+}
+
+

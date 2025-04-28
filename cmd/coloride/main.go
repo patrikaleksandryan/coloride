@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	windowWidth  = 1000
-	windowHeight = 720
+	windowWidth  = 1400
+	windowHeight = 1150
 )
 
 func initInterface() {
@@ -38,14 +38,7 @@ func run() error {
 }
 
 func main() {
-	fmt.Println(`
-	░░      ░░░░      ░░░  ░░░░░░░░░      ░░░       ░░░        ░░       ░░░        ░
-	▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒▒▒▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒▒▒▒  ▒▒▒▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒▒▒▒
-	▓  ▓▓▓▓▓▓▓▓  ▓▓▓▓  ▓▓  ▓▓▓▓▓▓▓▓  ▓▓▓▓  ▓▓       ▓▓▓▓▓▓  ▓▓▓▓▓  ▓▓▓▓  ▓▓      ▓▓▓
-	█  ████  ██  ████  ██  ████████  ████  ██  ███  ██████  █████  ████  ██  ███████
-	██      ████      ███        ███      ███  ████  ██        ██       ███        █
-	`)
-
+	fmt.Println(`░░░▒▒▒▓▓██ COLOR IDE ██▓▓▒▒▒░░░`)
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
