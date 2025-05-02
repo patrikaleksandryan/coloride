@@ -93,6 +93,11 @@ func (e *Editor) OnKeyDown(key int, mod uint16) {
 		if gui.IsCtrlCmdPressed(mod) {
 			e.text.HandleSelectAll()
 		}
+	case sdl.K_0, sdl.K_1, sdl.K_2, sdl.K_3, sdl.K_4, sdl.K_5, sdl.K_6, sdl.K_7, sdl.K_8:
+		if gui.IsCtrlCmdPressed(mod) {
+			keyColor := key - sdl.K_0
+			e.text.ColorizeSelection(keyColor)
+		}
 	}
 }
 
