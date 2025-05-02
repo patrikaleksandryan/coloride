@@ -10,7 +10,6 @@ type Window struct {
 
 	menu      *Menu
 	statusbar *Statusbar
-	sidebar   *Sidebar
 	toolbar   *Toolbar
 	editor    *Editor
 }
@@ -22,13 +21,11 @@ func NewWindow() *Window {
 
 	win.menu = NewMenu()
 	win.statusbar = NewStatusbar()
-	win.sidebar = NewSidebar()
-	win.editor = NewEditor()
-	win.toolbar = NewToolbar(win.editor)
+	win.editor = NewEditor(win.menu, win.menu, win.statusbar)
+	win.toolbar = NewToolbar(win.editor, win.editor)
 
 	win.Append(win.menu)
 	win.Append(win.statusbar)
-	win.Append(win.sidebar)
 	win.Append(win.toolbar)
 	win.Append(win.editor)
 
@@ -39,7 +36,6 @@ func (win *Window) ResizeInside() {
 	w, h := win.Size()
 	const menuH = 40
 	const statusbarH = 40
-	const sidebarW = 260
 	const toolbarH = 40
 
 	frame := 16
@@ -48,9 +44,8 @@ func (win *Window) ResizeInside() {
 
 	gui.SetGeometry(win.menu, X, Y, W, menuH)
 	gui.SetGeometry(win.statusbar, X, Y+H-statusbarH, W, statusbarH)
-	gui.SetGeometry(win.sidebar, X, Y+menuH, sidebarW, sidebarH)
-	gui.SetGeometry(win.toolbar, X+sidebarW, Y+menuH, W-sidebarW, toolbarH)
-	gui.SetGeometry(win.editor, X+sidebarW, Y+menuH+toolbarH, W-sidebarW, sidebarH-toolbarH)
+	gui.SetGeometry(win.toolbar, X, Y+menuH, W, toolbarH)
+	gui.SetGeometry(win.editor, X, Y+menuH+toolbarH, W, sidebarH-toolbarH)
 }
 
 func (win *Window) Render(x, y int) {

@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/patrikaleksandryan/coloride/pkg/font"
 	"github.com/patrikaleksandryan/coloride/pkg/text"
@@ -26,6 +27,10 @@ var (
 	focusFrame             Frame
 	mouseDownFrame         Frame
 	mouseDownX, mouseDownY int
+
+	lastMouseX, lastMouseY int // For mouse wheel event, because MouseX and MouseY are not available
+
+	IsMacOS bool
 )
 
 // Append appends the given frame to the main frame.
@@ -41,6 +46,10 @@ func SetFocus(frame Frame) {
 	if focusFrame != nil {
 		focusFrame.GetFocus()
 	}
+}
+
+func SetWindowTitle(title string) {
+	window.SetTitle(title)
 }
 
 func Init(windowWidth, windowHeight int) error {
@@ -104,7 +113,12 @@ func ResizeMainFrame(w, h int) {
 	}
 }
 
+func handleMouseWheel(e *sdl.MouseWheelEvent) {
+	mainFrame.HandleMouseWheel(lastMouseX, lastMouseY, e.PreciseX, e.PreciseY, e.Direction == sdl.MOUSEWHEEL_FLIPPED)
+}
+
 func handleMouseMove(x, y int, buttons uint32) {
+	lastMouseX, lastMouseY = x, y
 	if mouseDownFrame != nil {
 		mouseDownFrame.MouseMove(x-mouseDownX, y-mouseDownY, buttons)
 	} else {
@@ -193,6 +207,8 @@ func handleEvents(running *bool) {
 			} else if e.State == sdl.RELEASED {
 				handleMouseUp(int(e.X), int(e.Y), int(e.Button))
 			}
+		case *sdl.MouseWheelEvent:
+			handleMouseWheel(e)
 		case *sdl.TextInputEvent:
 			handleTextInput(e)
 		case *sdl.KeyboardEvent:
@@ -223,4 +239,14 @@ func Run() error {
 		render()
 	}
 	return nil
+}
+
+// IsCtrlCmdPressed reports whether CMD key is pressed on macOS or CTRL is pressed on other OSes.
+func IsCtrlCmdPressed(mod uint16) bool {
+	return IsMacOS && mod&sdl.KMOD_GUI != 0 ||
+		!IsMacOS && mod&sdl.KMOD_CTRL != 0
+}
+
+func init() {
+	IsMacOS = runtime.GOOS == "darwin"
 }

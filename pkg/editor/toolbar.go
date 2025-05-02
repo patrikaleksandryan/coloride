@@ -10,43 +10,85 @@ import (
 
 const (
 	colorCount = 9
+
+	toolbarBtnH = 32 // Height of toolbar buttons
 )
 
 type Colorizer interface {
 	ColorizeSelection(color int)
 }
 
+type FileManager interface {
+	NewFile()
+	OpenFile()
+	SaveFile()
+	SaveFileAs()
+}
+
 type Toolbar struct {
 	gui.FrameImpl
-	colorizer Colorizer
+	fileManager FileManager
+	colorizer   Colorizer
 
 	colorButtons [colorCount]*gui.Button
 }
 
-func NewToolbar(colorizer Colorizer) *Toolbar {
+func NewToolbar(fileManager FileManager, colorizer Colorizer) *Toolbar {
 	t := &Toolbar{
-		colorizer: colorizer,
+		fileManager: fileManager,
+		colorizer:   colorizer,
 	}
 	gui.InitFrame(&t.FrameImpl, 0, 0, 100, 20)
-	t.initColorButtons()
+	x := t.initFileButtons()
+	t.initColorButtons(x)
 	return t
 }
 
-func (t *Toolbar) initColorButtons() {
-	const w, h, gap = 32, 32, 4
-	X, Y := 0, 0
+func (t *Toolbar) initFileButtons() (X int) {
+	width := 130
+	const interBtnGap = 8
+	X = 0
+
+	btn := gui.NewButton("New", X, 0, width, toolbarBtnH)
+	t.Append(btn)
+	btn.OnClick = t.fileManager.NewFile
+	X += width + interBtnGap
+
+	btn = gui.NewButton("Open...", X, 0, width, toolbarBtnH)
+	t.Append(btn)
+	btn.OnClick = t.fileManager.OpenFile
+	X += width + interBtnGap
+
+	btn = gui.NewButton("Save", X, 0, width, toolbarBtnH)
+	t.Append(btn)
+	btn.OnClick = t.fileManager.SaveFile
+	X += width + interBtnGap
+
+	width += 50
+
+	btn = gui.NewButton("Save As...", X, 0, width, toolbarBtnH)
+	t.Append(btn)
+	btn.OnClick = t.fileManager.SaveFileAs
+	X += width + interBtnGap
+
+	return
+}
+
+func (t *Toolbar) initColorButtons(X int) {
+	const gap = 4
+	Y := 0
 	for i := 0; i < colorCount; i++ {
 		caption := fmt.Sprintf("%d", i)
-		btn := gui.NewButton(caption, X, Y, w, h)
-		color, bgColor := t.ButtonColorByNum(i)
-		btn.SetColor(color)
+		btn := gui.NewButton(caption, X, Y, toolbarBtnH, toolbarBtnH)
+		fgColor, bgColor := t.ButtonColorByNum(i)
+		btn.SetColor(fgColor)
 		btn.SetBgColor(bgColor)
 		btn.OnClick = func() {
 			t.colorizer.ColorizeSelection(i)
 		}
 		t.colorButtons[i] = btn
 		t.Append(btn)
-		X += w + gap
+		X += toolbarBtnH + gap
 	}
 }
 

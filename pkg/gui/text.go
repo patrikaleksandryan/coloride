@@ -17,6 +17,19 @@ func Print(s string, x, y int, color, bgColor color.Color) {
 	}
 }
 
+func PrintAlign(s string, x, y, w int, color, bgColor color.Color, align int) {
+	charW, _ := mainFont.Size()
+
+	switch align {
+	case AlignCenter:
+		x += (w - charW*len(s)) / 2
+	case AlignRight:
+		x += w - charW*len(s)
+	}
+
+	Print(s, x, y, color, bgColor)
+}
+
 func PrintCentered(s string, x, y, w, h int, color, bgColor color.Color) {
 	charW, charH := mainFont.Size()
 	strW := charW * len(s)

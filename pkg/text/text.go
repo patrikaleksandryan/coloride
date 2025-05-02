@@ -4,8 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
+	"github.com/patrikaleksandryan/coloride/pkg/colorcode"
 	"github.com/patrikaleksandryan/coloride/pkg/scanner"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 type Text interface {
@@ -22,6 +26,10 @@ type Text interface {
 	HandlePageUp(shift bool)
 	HandlePageDown(shift bool)
 	HandleChar(r rune)
+	HandleCut()
+	HandleCopy()
+	HandlePaste()
+	HandleSelectAll()
 
 	Reader() *Reader
 	CurLine() *Line
@@ -39,10 +47,12 @@ type Text interface {
 	ContinueMouseSelection()
 
 	Resize(w, h int)
+	SetUpdaters(editedUpdater EditedUpdater, posUpdater PosUpdater)
 	SetFontSize(charW, charH int)
 	SetTabSize(tabSize int)
 	TabSize() int
 	ScrollValues() (scrollX, scrollY int)
+	ScrollDelta(dy int)
 
 	VisualToCursorX(l *Line, x int) int
 	CursorXToVisual(l *Line, x int) int
@@ -50,9 +60,18 @@ type Text interface {
 	MergeLines(l *Line)
 	DeleteLine(l *Line)
 
+	Clear()
 	LoadFromFile(fname string) error
 	SaveToFile(fname string) error
 	ColorizeSelection(color int)
+}
+
+type EditedUpdater interface {
+	UpdateEdited(edited bool)
+}
+
+type PosUpdater interface {
+	UpdatePos(line, col int)
 }
 
 // Selection represents a portion of text being selected
@@ -78,13 +97,17 @@ type TextImpl struct {
 	first, last *Line // First and last line of document
 	topLine     *Line // First line visible on the screen
 	topLineNum  int   // 1-based
+	lineCount   int
 
 	w, h             int // Size of editor frame in pixels
 	charW, charH     int // Size of character in pixels
 	scrollX, scrollY int // Text scroll relative to frame in pixels, positive
 	tabSize          int // Number of spaces in a tab
 
-	reader *Reader
+	reader        *Reader
+	edited        bool // If file was edited after it was opened
+	editedUpdater EditedUpdater
+	posUpdater    PosUpdater
 }
 
 func (s Selection) isEmpty() bool {
@@ -104,6 +127,7 @@ func NewText(w, h, charW, charH int) Text {
 		curLineNum: 1,
 		topLine:    line,
 		topLineNum: 1,
+		lineCount:  1,
 	}
 	text.Resize(w, h)
 	text.SetFontSize(charW, charH)
@@ -112,7 +136,47 @@ func NewText(w, h, charW, charH int) Text {
 	return text
 }
 
+func (t *TextImpl) SetUpdaters(editedUpdater EditedUpdater, posUpdater PosUpdater) {
+	t.editedUpdater = editedUpdater
+	t.posUpdater = posUpdater
+}
+
+func (t *TextImpl) UpdatePos() {
+	if t.posUpdater != nil {
+		t.posUpdater.UpdatePos(t.curLineNum, t.cursorX+1)
+	}
+}
+
+func (t *TextImpl) setEdited(edited bool) {
+	if t.edited != edited {
+		t.edited = edited
+		if t.editedUpdater != nil {
+			t.editedUpdater.UpdateEdited(t.edited)
+		}
+	}
+}
+
+func (t *TextImpl) Clear() {
+	t.cursorX = 0
+	t.cursorMem = 0
+	t.curLineNum = 1
+	t.topLineNum = 1
+	t.selected = false
+	t.oldCurLine = nil
+	t.oldCurLineNum = 1
+	t.oldCursorX = 0
+	t.scrollX = 0
+	t.scrollY = 0
+	t.first = NewLine()
+	t.last = t.first
+	t.topLine = t.first
+	t.curLine = t.first
+	t.lineCount = 1
+	t.setEdited(false)
+}
+
 func (t *TextImpl) LoadFromFile(fname string) error {
+	t.Clear()
 	f, err := os.Open(fname)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
@@ -122,14 +186,15 @@ func (t *TextImpl) LoadFromFile(fname string) error {
 	buf := bufio.NewReader(f)
 	s := scanner.NewScanner(buf)
 
-	err = t.scanFile(s)
+	err = t.load(s)
 	if err != nil {
-		return fmt.Errorf("scan file: %w", err)
+		return fmt.Errorf("load file: %w", err)
 	}
+	t.setEdited(false)
 	return nil
 }
 
-func (t *TextImpl) scanFile(s *scanner.Scanner) error {
+func (t *TextImpl) load(s *scanner.Scanner) error {
 	s.Scan()
 	for s.Sym != scanner.EOT {
 		toAppend := make([]rune, 0)
@@ -157,16 +222,18 @@ func (t *TextImpl) scanFile(s *scanner.Scanner) error {
 			t.HandleChar(r)
 		}
 
-		t.curLine.ApplyColorCode()
+		// Apply color code only after HandleEnter
+		line := t.curLine
 
 		if s.Sym == scanner.NewLine {
+			t.curLine.NewLineType = s.NewLineType
 			t.HandleEnter()
 			s.Scan()
 		}
+
+		line.ApplyColorCode()
 	}
-
 	t.MoveToBeginning()
-
 	return nil
 }
 
@@ -180,89 +247,138 @@ func splitTrailingWhitespace(s []rune) ([]rune, []rune) {
 }
 
 func (t *TextImpl) SaveToFile(fname string) error {
-	//!TODO
-	_ = fname
-	return nil
-}
-
-func (t *TextImpl) setDummyText() {
-	//	s := `MODULE TestReader;
-	//IMPORT Out, Texts;
-	//VAR T: Texts.Text; R: Texts.Reader; S: Texts.Scanner;
-	//  ch: CHAR;
-	//BEGIN
-	//	NEW(T); Texts.Open(T, 'Data/TEXT.DAT');
-	//	Texts.OpenScanner(S, T, 1); Texts.Scan(S);
-	//    Out.String(S.s); Out.Char(';'); Out.Ln;
-	//    Texts.OpenReader(R, T, 0);
-	//	Texts.Read(R, ch);
-	//    WHILE ~R.eot DO
-	//        Out.Int(ORD(R.eot), 5);
-	//		Out.Int(ORD(ch), 5); Out.String('   ');
-	//		Out.Char(ch); Out.Ln;
-	//        Texts.Read(R, ch)
-	//	END
-	//END TestReader.`
-
-	s := `package main
-
-import (
-	"fmt"
-	"os"
-
-	"github.com/patrikaleksandryan/coloride/pkg/editor"
-	"github.com/patrikaleksandryan/coloride/pkg/gui"
-)
-
-const (
-	windowWidth  = 1000
-	windowHeight = 750
-)
-
-func run() error {
-	err := gui.Init(windowWidth, windowHeight)
+	f, err := os.Create(fname)
 	if err != nil {
-		return err
+		return fmt.Errorf("open file: %w", err)
+	}
+	buf := bufio.NewWriter(f)
+
+	err = t.write(buf)
+	if err != nil {
+		f.Close()
+		return fmt.Errorf("write file: %w", err)
 	}
 
-	initInterface("Hello world", 412)
-
-	err = /* gui.Run()
+	err = buf.Flush()
 	if err != nil {
-		return err
-	}*/ fmt.Println("Hello")
+		f.Close()
+		return fmt.Errorf("flush buffer: %w", err)
+	}
 
-	gui.Close()
-
+	err = f.Close()
+	if err != nil {
+		return fmt.Errorf("close file: %w", err)
+	}
+	t.setEdited(false)
 	return nil
 }
 
-type User struct {
-	Name 		/* this is a comment*/ string
-	Age  int // Also this is a comment
-}
-
-func initInterface() {
-	window := editor.NewWindow  ('x', 'y')
-	gui.Append(window, ` + "`" + `Hello world
-		another text here
-		this is a text` + "`" + `)
-	gui.SetFocus(window.Editor 	 	())
-}`
-
-	for _, r := range s {
-		if r == 0xA {
-			t.HandleEnter()
-		} else {
-			t.HandleChar(r)
+func (t *TextImpl) write(buf *bufio.Writer) error {
+	line := t.first
+	for line != nil {
+		err := t.writeLine(buf, line)
+		if err != nil {
+			return err
 		}
+		line = line.next
 	}
-	t.MoveToBeginning()
+	return nil
+}
 
-	r1 := t.first.next.next.runs
-	r2 := &Run{length: 4, color: 7 - 4}
-	r1.length -= 4
-	r1.next = r2
+func (t *TextImpl) writeLine(buf *bufio.Writer, line *Line) error {
+	_, err := buf.WriteString(string(line.chars))
+	if err != nil {
+		return err
+	}
+
+	if line.IsColorized() {
+		if len(line.spaces) != 0 {
+			_, err = buf.WriteString(string(line.spaces))
+		} else {
+			_, err = buf.WriteString("\t\t")
+		}
+		if err != nil {
+			return err
+		}
+		t.openColorComment(buf)
+		t.writeColorCode(buf, line.runs)
+		t.closeColorComment(buf)
+	}
+
+	err = t.writeNewLine(buf, line.NewLineType)
+	return err
+}
+
+func (t *TextImpl) openColorComment(buf *bufio.Writer) error {
+	_, err := buf.WriteString("///")
+	return err
+}
+
+func (t *TextImpl) closeColorComment(_ *bufio.Writer) error {
+	return nil
+}
+
+func (t *TextImpl) writeColorCode(buf *bufio.Writer, runs *Run) error {
+	run := runs
+	first := true
+
+	//     !A || B    ===    A -> B
+	// run.next != nil || run.color != 0
+	// (run.next == nil) -> (run.color != 0)
+
+	// Iterate all runs, except the last one in case the last one is standard (color = 0)
+	//for run != nil && !(run.next == nil && run.color == 0) {
+	for run != nil && (run.next != nil || run.color != 0) {
+		// Output space, but not the first time
+		if !first {
+			_, err := buf.WriteString(" ")
+			if err != nil {
+				return err
+			}
+		}
+		first = false
+		// Output code for the run
+		if run.color == 0 { // Number. Represents a gap. The last one is not written
+			_, err := buf.WriteString(strconv.Itoa(run.length))
+			if err != nil {
+				return err
+			}
+		} else if run.next == nil { // Letter, because it is the last one
+			_, err := buf.WriteRune(colorcode.ToLetter(run.color))
+			if err != nil {
+				return err
+			}
+		} else { // Number + Letter
+			_, err := buf.WriteString(strconv.Itoa(run.length))
+			if err != nil {
+				return err
+			}
+			_, err = buf.WriteRune(colorcode.ToLetter(run.color))
+			if err != nil {
+				return err
+			}
+		}
+		run = run.next
+	}
+	return nil
+}
+
+func newLineTypeToString(newLineType int) string {
+	switch newLineType {
+	case scanner.LF:
+		return "\n"
+	case scanner.CRLF:
+		return "\r\n"
+	case scanner.CR:
+		return "\r"
+	default:
+		panic("impossible: newLineType")
+	}
+}
+
+func (t *TextImpl) writeNewLine(buf *bufio.Writer, newLineType int) error {
+	_, err := buf.WriteString(newLineTypeToString(newLineType))
+	return err
 }
 
 func (t *TextImpl) Reader() *Reader {
@@ -278,29 +394,41 @@ func (t *TextImpl) HandleEscape() {
 }
 
 func (t *TextImpl) HandleDelete() {
-	t.ClearSelection()
-	if t.cursorX != len(t.curLine.chars) {
-		t.curLine.DeleteChar(t.cursorX)
-	} else if t.curLine.next != nil {
-		dx := len(t.curLine.chars)
-		t.HandleRight(false)
-		t.MergeLines(t.curLine.prev)
-		t.cursorX = dx
+	if t.selected {
+		t.DeleteSelectedText()
+	} else {
+		t.ClearSelection()
+		if t.cursorX != len(t.curLine.chars) {
+			t.curLine.DeleteChar(t.cursorX)
+			t.setEdited(true)
+		} else if t.curLine.next != nil {
+			dx := len(t.curLine.chars)
+			t.HandleRight(false)
+			t.MergeLines(t.curLine.prev)
+			t.cursorX = dx
+			t.setEdited(true)
+		}
+		t.UpdateCursorMem()
 	}
-	t.UpdateCursorMem()
 }
 
 func (t *TextImpl) HandleBackspace() {
-	t.ClearSelection()
-	if t.cursorX != 0 {
-		t.curLine.DeleteChar(t.cursorX - 1)
-		t.cursorX--
-	} else if t.curLine.prev != nil {
-		dx := len(t.curLine.prev.chars)
-		t.MergeLines(t.curLine.prev)
-		t.cursorX = dx
+	if t.selected {
+		t.DeleteSelectedText()
+	} else {
+		t.ClearSelection()
+		if t.cursorX != 0 {
+			t.curLine.DeleteChar(t.cursorX - 1)
+			t.cursorX--
+			t.setEdited(true)
+		} else if t.curLine.prev != nil {
+			dx := len(t.curLine.prev.chars)
+			t.MergeLines(t.curLine.prev)
+			t.cursorX = dx
+			t.setEdited(true)
+		}
+		t.UpdateCursorMem()
 	}
-	t.UpdateCursorMem()
 }
 
 // InSelection reports whether character charNum on line lineNum is currently being selected.
@@ -351,6 +479,46 @@ func (t *TextImpl) ClearSelection() {
 	t.selected = false
 }
 
+func (t *TextImpl) DeleteSelectedText() {
+	if t.selected {
+		sel := t.selection
+		// First line of selection
+		line, lineNum := t.LineByNum(t.selection.LineFrom)
+		if sel.LineFrom == sel.LineTo { // One line selected
+			line.DeleteRange(sel.CharFrom, sel.CharTo)
+			t.SetCursorX(t.selection.CharFrom)
+		} else { // Two or more lines
+			next := line.next
+			if sel.CharFrom == 0 {
+				t.DeleteLine(line) // Delete the first line of selection entierly
+			} else {
+				line.DeleteRange(sel.CharFrom, len(line.chars)+1) // Delete second part of the first line
+				t.SetCurLine(line, lineNum)
+				t.SetCursorX(t.selection.CharFrom)
+			}
+			lineNum++
+			line = next
+			// Selection inner lines
+			for lineNum != sel.LineTo {
+				next := line.next
+				t.DeleteLine(line)
+				lineNum++
+				line = next
+			}
+			// Last line of selection
+			line.DeleteRange(0, sel.CharTo)
+			if sel.CharFrom == 0 {
+				t.SetCurLine(line, t.selection.LineFrom)
+				t.SetCursorX(0)
+			} else {
+				t.MergeLines(line.prev)
+			}
+		}
+		t.selected = false
+		t.setEdited(true)
+	}
+}
+
 func (t *TextImpl) SetSelection(lineFrom, charFrom, lineTo, charTo int) {
 	t.selected = true
 	t.selection.LineFrom = lineFrom
@@ -387,6 +555,7 @@ func (t *TextImpl) SelectionAfter(shift bool) {
 		t.SetSelection(t.selection.LineFrom, t.selection.CharFrom, t.curLineNum, t.cursorX)
 	}
 	t.MoveToCursor()
+	t.UpdatePos()
 }
 
 func (t *TextImpl) CursorTooLow() bool {
@@ -407,12 +576,25 @@ func (t *TextImpl) MoveToCursor() {
 	}
 }
 
+func (t *TextImpl) ScrollDelta(dy int) {
+	t.scrollY += dy
+
+	max := t.lineCount*t.charH - t.h
+	if t.scrollY > max {
+		t.scrollY = max
+	}
+	if t.scrollY < 0 {
+		t.scrollY = 0
+	}
+}
+
 func (t *TextImpl) MoveToBeginning() {
 	t.curLine = t.first
 	t.curLineNum = 1
 	t.cursorX = 0
 	t.UpdateCursorMem()
 	t.MoveToCursor()
+	t.UpdatePos()
 }
 
 func (t *TextImpl) StartMouseSelection() {
@@ -434,6 +616,8 @@ func (t *TextImpl) HandleEnter() {
 	t.curLineNum++
 	t.cursorX = 0
 	t.UpdateCursorMem()
+	t.MoveToCursor()
+	t.setEdited(true)
 }
 
 func (t *TextImpl) HandleHome(shift bool) {
@@ -513,7 +697,7 @@ func (t *TextImpl) HandleDown(shift bool) {
 	t.SelectionAfter(shift)
 }
 
-// VisualToCursorX returns x recalculated as cursorX for the given line.
+// VisualToCursorX returns x, recalculated as cursorX for the given line.
 func (t *TextImpl) VisualToCursorX(l *Line, x int) int {
 	tabSize := t.TabSize()
 	m := l.Chars()
@@ -530,13 +714,16 @@ func (t *TextImpl) VisualToCursorX(l *Line, x int) int {
 		i++
 	}
 
-	//TODO use oldVisualX to approximate tab
-	_ = oldVisualX
+	// Approximate several-space tab character clicks
+	diff := visualX - oldVisualX
+	if diff > 1 && x <= oldVisualX+diff/2 {
+		i--
+	}
 
 	return i
 }
 
-// CursorXToVisual returns x recalculated as visual X for the given line.
+// CursorXToVisual returns x, recalculated as visual X for the given line.
 func (t *TextImpl) CursorXToVisual(l *Line, x int) int {
 	tabSize := t.TabSize()
 	m := l.Chars()
@@ -617,11 +804,73 @@ func (t *TextImpl) HandlePageDown(shift bool) {
 func (t *TextImpl) HandleChar(r rune) {
 	t.SelectionBefore()
 
+	t.DeleteSelectedText()
 	t.curLine.InsertChar(t.cursorX, r)
 
 	t.cursorX++
 	t.UpdateCursorMem()
 	t.SelectionAfter(false)
+	t.setEdited(true)
+}
+
+func (t *TextImpl) HandleCut() {
+	t.HandleCopy()
+	t.DeleteSelectedText()
+}
+
+func (t *TextImpl) HandleCopy() {
+	text := t.SelectedText()
+	sdl.SetClipboardText(text)
+}
+
+func (t *TextImpl) HandlePaste() {
+	text, err := sdl.GetClipboardText()
+	if err == nil {
+		t.DeleteSelectedText()
+		t.InsertText(text)
+	}
+}
+
+func (t *TextImpl) HandleSelectAll() {
+	t.SetSelection(1, 0, t.lineCount, len(t.last.chars))
+}
+
+func (t *TextImpl) SelectedText() string {
+	var b strings.Builder
+	if t.selected {
+		sel := t.selection
+		// First line of selection
+		line, lineNum := t.LineByNum(sel.LineFrom)
+		if sel.LineFrom == sel.LineTo { // One line selected
+			b.WriteString(line.StringRange(sel.CharFrom, sel.CharTo))
+		} else { // Two or more lines
+			b.WriteString(line.StringRange(sel.CharFrom, len(line.chars)))
+			b.WriteString(newLineTypeToString(line.NewLineType))
+			lineNum++
+			line = line.next
+			// Selection inner lines
+			for lineNum != sel.LineTo {
+				b.WriteString(line.StringRange(0, len(line.chars)))
+				b.WriteString(newLineTypeToString(line.NewLineType))
+				lineNum++
+				line = line.next
+			}
+			// Last line of selection
+			b.WriteString(line.StringRange(0, sel.CharTo))
+		}
+	}
+	return b.String()
+}
+
+func (t *TextImpl) InsertText(text string) {
+	for _, ch := range text {
+		if ch == '\n' {
+			t.HandleEnter()
+		} else if ch != '\r' {
+			t.HandleChar(ch)
+		}
+	}
+	t.setEdited(true)
 }
 
 func (t *TextImpl) CurLine() *Line {
@@ -652,6 +901,8 @@ func (t *TextImpl) SetCurLine(line *Line, lineNum int) {
 	t.curLineNum = lineNum
 	t.cursorX = 0
 	t.UpdateCursorMem()
+	t.MoveToCursor()
+	t.UpdatePos()
 }
 
 func (t *TextImpl) TopLine() (*Line, int) {
@@ -669,6 +920,7 @@ func (t *TextImpl) SetCursorX(cursorX int) {
 	}
 	t.cursorX = cursorX
 	t.UpdateCursorMem()
+	t.UpdatePos()
 }
 
 func (t *TextImpl) Resize(w, h int) {
@@ -697,6 +949,7 @@ func (t *TextImpl) SplitLine(l *Line, x int) {
 	if l == t.last {
 		t.last = l.next
 	}
+	t.lineCount++
 }
 
 // MergeLines merges line l with the next line, appending its contents to l.
@@ -736,6 +989,14 @@ func (t *TextImpl) DeleteLine(l *Line) {
 			t.last = l.prev
 		}
 
+		if l == t.topLine {
+			if t.topLine.prev != nil {
+				t.topLine = t.topLine.prev
+			} else {
+				t.topLine = t.first
+			}
+		}
+
 		if l == t.curLine {
 			if l.prev == nil {
 				t.curLine = t.first
@@ -747,6 +1008,9 @@ func (t *TextImpl) DeleteLine(l *Line) {
 			t.cursorX = 0
 			t.UpdateCursorMem()
 		}
+		t.lineCount--
+		t.ScrollDelta(0)
+		t.MoveToCursor()
 	}
 }
 
@@ -754,7 +1018,7 @@ func (t *TextImpl) ColorizeSelection(color int) {
 	if t.selected {
 		sel := t.selection
 		// First line of selection
-		line, lineNum := t.LineByNum(t.selection.LineFrom)
+		line, lineNum := t.LineByNum(sel.LineFrom)
 		if sel.LineFrom == sel.LineTo { // One line selected
 			line.Colorize(color, sel.CharFrom, sel.CharTo)
 		} else { // Two or more lines

@@ -15,6 +15,14 @@ const (
 	EOT         // End of text
 )
 
+const (
+	// New Line Types
+
+	LF   = iota // Unix-style new line (\n)
+	CRLF        // DOS- and Windows-style new line (\r\n)
+	CR          // Old Mac- and old Oberon OS-style new line (\r)
+)
+
 type Scanner struct {
 	Ch                  rune
 	file                *bufio.Reader
@@ -22,8 +30,9 @@ type Scanner struct {
 	eof                 bool
 	colorMarkerDetected bool
 
-	Sym    int
-	String []rune // Actual data of the last scanned symbol if sym = String
+	Sym         int
+	String      []rune // Actual data of the last scanned symbol if sym = String
+	NewLineType int    // One of New Line Type constants if sym = NewLine
 }
 
 func NewScanner(file *bufio.Reader) *Scanner {
@@ -44,11 +53,15 @@ func (s *Scanner) Scan() {
 		s.colorMarkerDetected = false
 	} else if s.Ch == '\n' {
 		s.read()
+		s.NewLineType = LF
 		s.Sym = NewLine
 	} else if s.Ch == '\r' {
 		s.read()
 		if s.Ch == '\n' {
 			s.read()
+			s.NewLineType = CRLF
+		} else {
+			s.NewLineType = CR
 		}
 		s.Sym = NewLine
 	} else { // String or ColorMarker

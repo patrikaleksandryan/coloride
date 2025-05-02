@@ -2,30 +2,28 @@ package main
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/patrikaleksandryan/coloride/pkg/editor"
 	"github.com/patrikaleksandryan/coloride/pkg/gui"
 )
 
-const (		///5 B
-	windowWidth  = 1000		///B
-	windowDepth  = 20		///B
-	windowHeight = 750		///13B
+const (		///5 b
+	windowWidth  = 1000		///b
+	windowDepth  = 20		///b
+	windowHeight = 750		///13b
 )
 
 func run() error {
-	err := gui.Init(windowWidth, windowHeight)		///2 3R! 4 3G!
+	err := gui.Init(windowWidth, windowHeight)		///1 3R 4 3G
 	if err != nil {
-		return err													    		///Y!
+		return err													    		///Y
 	}
 
-	initInterface("Hello world", 412)							///16 13R
+	initInterface("Hello world", 412)							///15 13r
 
 	err = /* gui.Run()
-	if err != nil {
+	if err != nil {   ///4 10y
 		return err
-	}*/ fmt.Println("Hello")		///6 R3 ///9 R
+	}*/ fmt.Println("Hello")		///5 3r ///9 r
 
 	gui.Close()
 
@@ -43,4 +41,4 @@ func initInterface() {
 		another text here
 		this is a text` + "`" + `)
 	gui.SetFocus(window.Editor 	 	())
-}
+}		///R

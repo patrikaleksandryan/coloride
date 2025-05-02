@@ -27,15 +27,17 @@ type Frame interface {
 	LostFocus()
 
 	Click()
+	MouseWheel(x, y int, wx, wy float32, inverted bool)
 	MouseMove(x, y int, buttons uint32)
 	MouseDown(x, y, button int)
 	MouseUp(x, y, button int)
 
 	FindPos(this Frame, x, y int) (target Frame, X, Y int)
+	HandleMouseWheel(x, y int, wx, wy float32, inverted bool)
 	HandleMouseMove(x, y int, buttons uint32)
 	HandleMouseDown(x, y, button int) (target Frame, X, Y int)
 
-	OnCharInput(r rune) //!FIXME rename?
+	OnCharInput(r rune)
 	OnKeyDown(key int, mod uint16)
 	OnKeyUp(key int, mod uint16)
 
@@ -63,10 +65,11 @@ type FrameImpl struct {
 	body       Frame // Ring with a lock
 	prev, next Frame
 
-	OnClick     func()
-	OnMouseMove func(x, y int, buttons uint32)
-	OnMouseDown func(x, y, button int)
-	OnMouseUp   func(x, y, button int)
+	OnClick      func()
+	OnMouseWheel func(x, y int, wx, wy float32, inverted bool)
+	OnMouseMove  func(x, y int, buttons uint32)
+	OnMouseDown  func(x, y, button int)
+	OnMouseUp    func(x, y, button int)
 }
 
 func InitFrame(frame *FrameImpl, x, y, w, h int) {
@@ -192,6 +195,12 @@ func (f *FrameImpl) Click() {
 	}
 }
 
+func (f *FrameImpl) MouseWheel(x, y int, wx, wy float32, inverted bool) {
+	if f.OnMouseWheel != nil {
+		f.OnMouseWheel(x, y, wx, wy, inverted)
+	}
+}
+
 func (f *FrameImpl) MouseMove(x, y int, buttons uint32) {
 	f.mousePressed = buttons&1 != 0 && x >= 0 && x < f.w && y >= 0 && y < f.h
 	if f.OnMouseMove != nil {
@@ -231,6 +240,13 @@ func (f *FrameImpl) FindPos(this Frame, x, y int) (target Frame, X, Y int) {
 		}
 	}
 	return
+}
+
+func (f *FrameImpl) HandleMouseWheel(x, y int, wx, wy float32, inverted bool) {
+	target, X, Y := f.FindPos(f, x, y)
+	if target != nil {
+		target.MouseWheel(x-X, y-Y, wx, wy, inverted)
+	}
 }
 
 func (f *FrameImpl) HandleMouseMove(x, y int, buttons uint32) {

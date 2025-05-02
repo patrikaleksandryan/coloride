@@ -15,6 +15,7 @@ func NewButton(caption string, x, y, w, h int) *Button {
 		caption: caption,
 	}
 	InitFrame(&b.FrameImpl, x, y, w, h)
+	b.color = color.Black
 	return b
 }
 

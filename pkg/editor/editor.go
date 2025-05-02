@@ -2,27 +2,47 @@ package editor
 
 import (
 	"fmt"
+	"log"
+	"path/filepath"
 
 	"github.com/patrikaleksandryan/coloride/pkg/color"
 	"github.com/patrikaleksandryan/coloride/pkg/gui"
 	"github.com/patrikaleksandryan/coloride/pkg/syntax"
 	"github.com/patrikaleksandryan/coloride/pkg/text"
 	"github.com/veandco/go-sdl2/sdl"
+
+	"github.com/ncruces/zenity"
+)
+
+const (
+	scrollSensitivity = 10.0
 )
 
 type Editor struct {
 	gui.FrameImpl
 
-	borderWidth int
-	text        text.Text
+	borderWidth     int
+	sidebarWidth    int
+	text            text.Text
+	fname           string
+	fileNameUpdater FileNameUpdater
 }
 
-func NewEditor() *Editor {
+type FileNameUpdater interface {
+	UpdateFileName(fname string)
+}
+
+func NewEditor(fileNameUpdater FileNameUpdater,
+	editedUpdater text.EditedUpdater, posUpdater text.PosUpdater) *Editor {
 	charW, charH := gui.FontSize()
 	e := &Editor{
-		borderWidth: 4,
-		text:        text.NewText(100, 100, charW, charH),
+		borderWidth:     4,
+		sidebarWidth:    64,
+		text:            text.NewText(100, 100, charW, charH),
+		fileNameUpdater: fileNameUpdater,
 	}
+
+	e.text.SetUpdaters(editedUpdater, posUpdater)
 
 	err := e.text.LoadFromFile("data/sample.go")
 	if err != nil {
@@ -57,6 +77,22 @@ func (e *Editor) OnKeyDown(key int, mod uint16) {
 		e.text.HandleEnd(isShiftPressed(mod))
 	case sdl.K_ESCAPE:
 		e.text.HandleEscape()
+	case sdl.K_x:
+		if gui.IsCtrlCmdPressed(mod) {
+			e.text.HandleCut()
+		}
+	case sdl.K_c:
+		if gui.IsCtrlCmdPressed(mod) {
+			e.text.HandleCopy()
+		}
+	case sdl.K_v:
+		if gui.IsCtrlCmdPressed(mod) {
+			e.text.HandlePaste()
+		}
+	case sdl.K_a:
+		if gui.IsCtrlCmdPressed(mod) {
+			e.text.HandleSelectAll()
+		}
 	}
 }
 
@@ -82,7 +118,14 @@ func (e *Editor) renderCursor(x, y int, color color.Color) {
 
 func (e *Editor) DrawFrame(x, y int) {
 	w, h := e.Size()
+	x += e.sidebarWidth
+	w -= e.sidebarWidth
 	size := e.borderWidth
+
+	gui.SetColor(color.Black)
+	rect := sdl.Rect{X: int32(x), Y: int32(y), W: int32(w), H: int32(h)}
+	gui.Renderer.FillRect(&rect)
+
 	gui.SetRGB(113, 92, 72)
 	gui.Renderer.FillRect(&sdl.Rect{X: int32(x), Y: int32(y), W: int32(w), H: int32(size)})
 	gui.Renderer.FillRect(&sdl.Rect{X: int32(x), Y: int32(y), W: int32(size), H: int32(h)})
@@ -92,31 +135,38 @@ func (e *Editor) DrawFrame(x, y int) {
 }
 
 func (e *Editor) Render(x, y int) {
-	gui.SetColor(color.Black)
 	w, h := e.Size()
-	rect := sdl.Rect{X: int32(x), Y: int32(y), W: int32(w), H: int32(h)}
-	gui.Renderer.FillRect(&rect)
 
 	selColor := color.MakeColor(255, 255, 255)
 	selBgColor := color.MakeColor(0, 0, 255)
+	selBgColor2 := color.MakeColor(40, 90, 160)
+	lineNumberColor := color.MakeColor(125, 89, 69)
+	curLineNumberColor := color.MakeColor(235, 235, 203)
 	tabSize := e.text.TabSize()
 	cursorX := e.text.CursorX()
 	charW, charH := gui.FontSize()
 	_, scrollY := e.text.ScrollValues()
 	border := e.borderWidth
-	X0, Y := x+e.borderWidth, y-scrollY+border
+	X0, Y := x+e.borderWidth+e.sidebarWidth, y-scrollY+border
 	X := X0
 
 	e.DrawFrame(x, y)
 
-	rect = sdl.Rect{X: int32(x + border), Y: int32(y + border), W: int32(w - 2*border), H: int32(h - 2*border)}
+	rect := sdl.Rect{X: int32(x), Y: int32(y + border), W: int32(w - border), H: int32(h - 2*border)}
 	gui.Renderer.SetClipRect(&rect)
 	clr := text.SymbolClassToColor(syntax.CNone)
 
 	curLineNum := e.text.CurLineNum()
 	reader := e.text.Reader()
 	lineNum := reader.TopLine()
-	for lineNum != -1 {
+	for lineNum != -1 { // -1 means "no more lines", returned by NextLine
+
+		numColor := lineNumberColor
+		if lineNum == curLineNum {
+			numColor = curLineNumberColor
+		}
+		gui.Print(fmt.Sprintf("%03d", lineNum), x, Y, numColor, color.Transparent)
+
 		visualX := 0
 		i := 0
 		lastColor := clr
@@ -129,7 +179,11 @@ func (e *Editor) Render(x, y int) {
 
 			if e.text.InSelection(lineNum, i) {
 				char.Color = selColor
-				char.BgColor = selBgColor
+				if char.BgColor != color.Transparent {
+					char.BgColor = selBgColor2
+				} else {
+					char.BgColor = selBgColor
+				}
 			}
 
 			gui.PrintChar(char.Char, X, Y, char.Color, char.BgColor)
@@ -148,8 +202,13 @@ func (e *Editor) Render(x, y int) {
 			i++
 		}
 		restColor := selBgColor
-		if e.text.InSelection(lineNum+1, -1) || reader.ShouldPaintFullLine(&restColor) {
+		inSelection := e.text.InSelection(lineNum+1, -1)
+		paintRest := reader.ShouldPaintFullLine(&restColor)
+		if inSelection || paintRest {
 			rect := sdl.Rect{X: int32(X), Y: int32(Y), W: int32(x + w - X), H: int32(charH)}
+			if inSelection && paintRest {
+				restColor = selBgColor2
+			}
 			gui.SetColor(restColor)
 			gui.Renderer.FillRect(&rect)
 		}
@@ -162,8 +221,8 @@ func (e *Editor) Render(x, y int) {
 	}
 }
 
-func (e *Editor) Resize(w, h int) {
-	e.FrameImpl.Resize(w, h)
+func (e *Editor) ResizeInside() {
+	w, h := e.Size()
 	e.text.Resize(w-2*e.borderWidth, h-2*e.borderWidth)
 }
 
@@ -172,9 +231,21 @@ func (e *Editor) jumpToMouse(x, y int) {
 	_, scrollY := e.text.ScrollValues()
 	lineNum := (y+scrollY)/charH + 1
 	line, lineNum := e.text.LineByNum(lineNum)
-	cursorX := e.text.VisualToCursorX(line, (x+charW/2-1)/charW)
+	cursorX := e.text.VisualToCursorX(line, (x-e.sidebarWidth+charW/2-1)/charW)
 	e.text.SetCurLine(line, lineNum)
 	e.text.SetCursorX(cursorX)
+}
+
+func (e *Editor) MouseWheel(x, y int, wx, wy float32, inverted bool) {
+	if inverted {
+		wy = -wy
+	}
+
+	e.text.ScrollDelta(int(wy * scrollSensitivity))
+
+	if e.OnMouseWheel != nil {
+		e.OnMouseWheel(x, y, wx, wy, inverted)
+	}
 }
 
 func (e *Editor) MouseDown(x, y, button int) {
@@ -193,4 +264,79 @@ func (e *Editor) MouseMove(x, y int, buttons uint32) {
 
 func (e *Editor) ColorizeSelection(color int) {
 	e.text.ColorizeSelection(color)
+}
+
+func (e *Editor) LoadFromFile(fname string) {
+	err := e.text.LoadFromFile(fname)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	e.fname = fname
+}
+
+func (e *Editor) SaveToFile(fname string) {
+	err := e.text.SaveToFile(fname)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	e.fname = fname
+}
+
+func (e *Editor) NewFile() {
+	e.text.Clear()
+	e.fname = ""
+	e.UpdateTitles()
+}
+
+func (e *Editor) OpenFile() {
+	fname, err := zenity.SelectFile(
+		zenity.Title("Open File"),
+		zenity.FileFilter{
+			Name:     "All Files",
+			Patterns: []string{"*"},
+		},
+	)
+	if err != nil {
+		return
+	}
+	e.LoadFromFile(fname)
+	e.UpdateTitles()
+}
+
+func (e *Editor) SaveFile() {
+	if e.fname != "" {
+		e.SaveToFile(e.fname)
+	} else {
+		e.SaveFileAs()
+	}
+}
+
+func (e *Editor) SaveFileAs() {
+	fname, err := zenity.SelectFileSave(
+		zenity.Title("Save File As"),
+		zenity.FileFilter{
+			Name:     "All Files",
+			Patterns: []string{"*"},
+		},
+	)
+	if err != nil {
+		return
+	}
+	e.SaveToFile(fname)
+	e.UpdateTitles()
+}
+
+func (e *Editor) UpdateTitles() {
+	const name = "ColorIDE"
+	if e.fname == "" {
+		gui.SetWindowTitle(name)
+	} else {
+		gui.SetWindowTitle(filepath.Base(e.fname) + " - " + name)
+	}
+
+	if e.fileNameUpdater != nil {
+		e.fileNameUpdater.UpdateFileName(e.fname)
+	}
 }
