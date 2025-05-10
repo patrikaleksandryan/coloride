@@ -96,22 +96,24 @@ func (t *Toolbar) ButtonColorByNum(i int) (clr color.Color, bgColor color.Color)
 	switch i {
 	case 0:
 		return color.White, color.Black
+
 	case 1:
-		return color.MakeColor(250, 20, 20), color.Black
+		return color.MakeColor(200, 20, 20), color.MakeColor(50, 25, 25)
 	case 2:
-		return color.MakeColor(0, 230, 0), color.Black
+		return color.MakeColor(0, 170, 0), color.MakeColor(25, 50, 25)
 	case 3:
-		return color.MakeColor(0, 128, 255), color.Black
+		return color.MakeColor(0, 50, 230), color.MakeColor(30, 30, 70)
 	case 4:
-		return color.MakeColor(240, 200, 0), color.Black
+		return color.MakeColor(200, 200, 0), color.MakeColor(50, 50, 25)
+
 	case 5:
-		return color.MakeColor(250, 20, 20), color.MakeColor(90, 10, 0)
+		return color.White, color.MakeColor(200, 0, 0)
 	case 6:
-		return color.MakeColor(0, 230, 0), color.MakeColor(0, 90, 0)
+		return color.White, color.MakeColor(0, 170, 0)
 	case 7:
-		return color.MakeColor(0, 128, 255), color.MakeColor(0, 30, 200)
+		return color.White, color.MakeColor(0, 20, 200)
 	case 8:
-		return color.MakeColor(240, 200, 0), color.MakeColor(80, 60, 0)
+		return color.Black, color.MakeColor(240, 230, 0)
 	}
 	return color.Black, color.Black // Impossible
 }

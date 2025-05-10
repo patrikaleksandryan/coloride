@@ -48,6 +48,8 @@ func NewEditor(fileNameUpdater FileNameUpdater,
 	if err != nil {
 		panic(fmt.Errorf("could not load file: %w", err))
 	}
+	e.fname = "sample.go"
+	e.UpdateTitles()
 
 	gui.InitFrame(&e.FrameImpl, 0, 0, 100, 100)
 	return e

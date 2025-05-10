@@ -1,44 +1,48 @@
 package main
 
-import (
-	"fmt"
-	"github.com/patrikaleksandryan/coloride/pkg/editor"
-	"github.com/patrikaleksandryan/coloride/pkg/gui"
-)
+import ( ///r
+	"fmt"                                               ///r
+	"github.com/patrikaleksandryan/coloride/pkg/editor" ///r
+	"github.com/patrikaleksandryan/coloride/pkg/gui"    ///r
+	"os"                                                ///r
+) ///r
 
-const (		///5 b
-	windowWidth  = 1000		///b
-	windowDepth  = 20		///b
-	windowHeight = 750		///13b
-)
+const ( ///g
+	windowWidth  = 1400 ///g
+	windowHeight = 1150 ///g
+) ///g
+
+func initInterface() { ///b
+	window := editor.NewWindow()  ///b
+	gui.Append(window)            ///b
+	gui.SetFocus(window.Editor()) ///b
+} ///b
 
 func run() error {
-	err := gui.Init(windowWidth, windowHeight)		///1 3R 4 3G
+	err := gui.Init(windowWidth, windowHeight) ///y
+	if err != nil {                            ///y
+		return err ///y
+	} ///y
+
+	initInterface() ///1 15R
+
+	err = gui.Run() ///1 15G
 	if err != nil {
-		return err													    		///Y
+		return err ///2 10B
 	}
 
-	initInterface("Hello world", 412)							///15 13r
-
-	err = /* gui.Run()
-	if err != nil {   ///4 10y
-		return err
-	}*/ fmt.Println("Hello")		///5 3r ///9 r
-
-	gui.Close()
+	gui.Close() ///1 11Y
 
 	return nil
 }
 
-type User struct {
-	Name 		/* this is a comment*/ string
-	Age  int // Also this is a comment
-}
+func main() {
+	fmt.Println(`
+		COLOR IDE
+	`)
 
-func initInterface() {
-	window := editor.NewWindow  ('x', 'y')
-	gui.Append(window, ` + "`" + `Hello world
-		another text here
-		this is a text` + "`" + `)
-	gui.SetFocus(window.Editor 	 	())
-}		///R
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
