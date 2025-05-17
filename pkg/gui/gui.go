@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	zoom     = 2
+	zoom     = 1
 	fontSize = 16 * zoom
 	charW    = 8 * zoom
 	charH    = 16 * zoom
