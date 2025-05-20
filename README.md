@@ -2,6 +2,8 @@
 
 **ColorIDE** is an experimental text editor with manual color markup for source code, developed as part of a master's thesis at the University of Latvia. The goal of the project is to improve the perception and readability of source code by introducing additional layers of color-based semantics, independent of syntax highlighting.
 
+![ColorIDE screenshot](data/coloride_screenshot.png)
+
 ## Core Concept
 
 Most modern editors rely on automatic syntax highlighting based on the programming language. **ColorIDE** introduces a novel concept: manually inserted color markers stored directly in the source code via special comments. This enables:
